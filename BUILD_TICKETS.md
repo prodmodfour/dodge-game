@@ -456,7 +456,7 @@ unity-ctrl --project "$PWD" test --filter CardinalDirectionTests
 
 ## 014 — Add teams and unit identity model
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add team and unit identity types`
 
