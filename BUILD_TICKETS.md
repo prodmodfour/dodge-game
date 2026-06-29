@@ -340,7 +340,7 @@ unity-batch "$PWD" -executeMethod ReactionTactics.Editor.BuildPrototype.PerformB
 
 ## 010 — Add the first empty EditMode smoke test
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: add initial editmode smoke test`
 
