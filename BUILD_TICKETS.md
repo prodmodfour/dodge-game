@@ -74,7 +74,7 @@ Each commit should leave the project compiling with no console errors unless the
 
 ## 001 — Initialize or verify the Unity project
 
-Status: TODO
+Status: DONE
 
 **Commit:** `chore: initialize reaction tactics unity project`
 
