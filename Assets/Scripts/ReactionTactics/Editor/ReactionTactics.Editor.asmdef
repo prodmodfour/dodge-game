@@ -2,7 +2,8 @@
   "name": "ReactionTactics.Editor",
   "rootNamespace": "ReactionTactics.Editor",
   "references": [
-    "ReactionTactics.Runtime"
+    "ReactionTactics.Runtime",
+    "UnityCliConnector.Editor"
   ],
   "includePlatforms": [
     "Editor"

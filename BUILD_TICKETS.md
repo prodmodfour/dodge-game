@@ -228,7 +228,7 @@ unity-ctrl --project "$PWD" menu "File/Save Project"
 
 ## 006 — Add a minimal custom hierarchy CLI tool
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add hierarchy dump cli tool`
 
