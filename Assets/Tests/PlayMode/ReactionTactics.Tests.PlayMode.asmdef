@@ -1,0 +1,19 @@
+{
+  "name": "ReactionTactics.Tests.PlayMode",
+  "rootNamespace": "ReactionTactics.Tests.PlayMode",
+  "references": [
+    "ReactionTactics.Runtime"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

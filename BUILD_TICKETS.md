@@ -167,7 +167,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 004 — Add runtime, editor, and test assembly definitions
 
-Status: TODO
+Status: DONE
 
 **Commit:** `chore: add reaction tactics assembly definitions`
 
