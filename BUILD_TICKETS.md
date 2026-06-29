@@ -537,7 +537,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 017 — Add grid map interface
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid map query interface`
 
