@@ -370,7 +370,7 @@ unity-ctrl --project "$PWD" test --filter ReactionTacticsSmokeTests
 
 ## 011 — Implement `GridPosition`
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid position value type`
 
