@@ -259,7 +259,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 007 — Add a minimal asset finder CLI tool
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add asset finder cli tool`
 
