@@ -483,7 +483,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 015 — Add lightweight result/error types
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add tactical result type`
 
