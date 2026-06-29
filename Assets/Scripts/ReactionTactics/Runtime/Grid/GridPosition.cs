@@ -62,6 +62,84 @@ namespace ReactionTactics.Grid
             return new GridPosition(X, 0, Z);
         }
 
+        /// <summary>
+        /// Returns the full 3D Manhattan distance to another grid position.
+        /// </summary>
+        public int ManhattanDistanceTo(GridPosition other)
+        {
+            return ManhattanDistance(this, other);
+        }
+
+        /// <summary>
+        /// Returns the horizontal x/z Manhattan distance to another grid position, ignoring height.
+        /// </summary>
+        public int HorizontalDistanceTo(GridPosition other)
+        {
+            return HorizontalDistance(this, other);
+        }
+
+        /// <summary>
+        /// Returns horizontal distance plus vertical delta multiplied by a configurable weight.
+        /// </summary>
+        public int TacticalDistanceTo(GridPosition other, int verticalWeight = 1)
+        {
+            return TacticalDistance(this, other, verticalWeight);
+        }
+
+        /// <summary>
+        /// Returns true when the other position is one horizontal cardinal step away.
+        /// Optionally rejects adjacent cells whose height delta exceeds maxHeightDifference.
+        /// </summary>
+        public bool IsFourWayAdjacentTo(GridPosition other, int? maxHeightDifference = null)
+        {
+            return AreFourWayAdjacent(this, other, maxHeightDifference);
+        }
+
+        public static int ManhattanDistance(GridPosition from, GridPosition to)
+        {
+            var delta = from - to;
+            return Math.Abs(delta.X) + Math.Abs(delta.Y) + Math.Abs(delta.Z);
+        }
+
+        public static int HorizontalDistance(GridPosition from, GridPosition to)
+        {
+            return Math.Abs(from.X - to.X) + Math.Abs(from.Z - to.Z);
+        }
+
+        public static int TacticalDistance(GridPosition from, GridPosition to, int verticalWeight = 1)
+        {
+            if (verticalWeight < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(verticalWeight),
+                    verticalWeight,
+                    "Vertical distance weight cannot be negative.");
+            }
+
+            var horizontalDistance = HorizontalDistance(from, to);
+            var verticalDistance = Math.Abs(from.Y - to.Y);
+            return horizontalDistance + (verticalDistance * verticalWeight);
+        }
+
+        public static bool AreFourWayAdjacent(GridPosition first, GridPosition second, int? maxHeightDifference = null)
+        {
+            if (maxHeightDifference.HasValue && maxHeightDifference.Value < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(maxHeightDifference),
+                    maxHeightDifference.Value,
+                    "Maximum height difference cannot be negative.");
+            }
+
+            if (HorizontalDistance(first, second) != 1)
+            {
+                return false;
+            }
+
+            var heightDifference = Math.Abs(first.Y - second.Y);
+            return !maxHeightDifference.HasValue || heightDifference <= maxHeightDifference.Value;
+        }
+
         public bool Equals(GridPosition other)
         {
             return X == other.X && Y == other.Y && Z == other.Z;

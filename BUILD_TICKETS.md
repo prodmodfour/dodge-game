@@ -398,7 +398,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 012 — Add grid distance helpers
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid distance helpers`
 
