@@ -106,7 +106,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 002 — Add project-level coding-agent instructions
 
-Status: TODO
+Status: DONE
 
 **Commit:** `docs: add coding agent unity workflow notes`
 

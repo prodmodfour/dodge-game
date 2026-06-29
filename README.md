@@ -64,14 +64,17 @@ If an agent run fails after making file changes or commits, the loop checkpoints
 
 ## Unity workflow
 
-Autonomous Unity work should follow the project brief and the Unity skill workflow:
+Autonomous Unity work should follow the project brief, `CLAUDE.md`, and the Unity skill workflow:
 
-1. inspect project/editor state
-2. make the smallest safe edit
-3. refresh, compile, or reserialize as appropriate
+1. inspect project/editor state with `unity-ctrl --project "$PWD" status` before changing Unity project files
+2. make the smallest safe edit for the selected ticket only
+3. refresh, compile, test, or reserialize as appropriate for the changed file type
 4. query Unity to verify the change
-5. save project/scene state
-6. update only the selected ticket status
-7. commit exactly one completed ticket
+5. save project/scene state when scene or asset wiring changes
+6. run `scripts/quality-gate.sh`
+7. update only the selected ticket status
+8. commit exactly one completed ticket
 
-Do not commit generated Unity folders such as `Library/`, `Temp/`, `Obj/`, or build output.
+Structural scene, prefab, and asset wiring should use `unity-ctrl exec` or project-specific `[UnityCliTool]` commands. Raw Unity YAML edits are for simple serialized value changes only and must be followed by `unity-ctrl --project "$PWD" reserialize <path>`.
+
+Do not commit generated Unity folders such as `Library/`, `Temp/`, `Obj/`, `Logs/`, `UserSettings/`, or build output. Do not delete `.meta` files.
