@@ -197,7 +197,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 005 — Create and register the main prototype scene
 
-Status: TODO
+Status: DONE
 
 **Commit:** `scene: add main prototype scene`
 
