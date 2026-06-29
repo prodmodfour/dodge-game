@@ -130,7 +130,7 @@ Status: DONE
 
 ## 003 — Create the prototype folder layout
 
-Status: TODO
+Status: DONE
 
 **Commit:** `chore: add prototype folder structure`
 
