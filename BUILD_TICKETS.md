@@ -312,7 +312,7 @@ Status: DONE
 
 ## 009 — Add a Linux build script shell
 
-Status: TODO
+Status: DONE
 
 **Commit:** `build: add prototype build script shell`
 
