@@ -427,7 +427,7 @@ unity-ctrl --project "$PWD" test --filter GridPositionDistanceTests
 
 ## 013 — Add `CardinalDirection` and direction math
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add cardinal grid direction math`
 
