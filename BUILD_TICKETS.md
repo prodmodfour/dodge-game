@@ -563,7 +563,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 018 — Add in-memory grid map implementation
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add in memory grid map`
 
