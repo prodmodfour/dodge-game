@@ -287,7 +287,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 008 — Add a prototype design README
 
-Status: TODO
+Status: DONE
 
 **Commit:** `docs: document prototype combat design`
 
