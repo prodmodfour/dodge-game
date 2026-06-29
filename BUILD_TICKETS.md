@@ -510,7 +510,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 016 — Add grid cell data model
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid cell data model`
 
