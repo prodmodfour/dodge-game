@@ -2571,7 +2571,7 @@ unity-ctrl --project "$PWD" test --filter AoeResolutionTests
 
 ## 087 — Implement cardinal cone shape service
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: calculate cardinal cone affected cells`
 

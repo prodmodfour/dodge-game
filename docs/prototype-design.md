@@ -68,6 +68,7 @@ Melee uses declaration-in-range, resolution-after-reactions timing:
 
 - Cone attacks are declared by choosing a target cell or direction from the actor's origin position.
 - Declaration records the cone's affected cells according to deterministic grid shape rules.
+- Prototype cones use a cardinal direction from the actor's origin; width is 0 at distance 1, 1 at distances 2-3, and 2 at distance 4 or farther, clipped to existing terrain cells.
 - Reactions happen before damage resolution.
 - At resolution, units are affected only if their final grid positions are still inside the declared cone shape.
 - Moving out of the cone during the reaction window is the way to avoid cone damage.
