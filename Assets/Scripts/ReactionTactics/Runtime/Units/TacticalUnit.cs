@@ -8,8 +8,8 @@ namespace ReactionTactics.Units
     /// <summary>
     /// Scene component that represents one combatant on the tactical grid.
     /// It stores identity, team, copied runtime resources, and current grid
-    /// position while owning the shared AP wallet used by both actions and reactions.
-    /// Turn flow and damage resolution are implemented by later combat systems.
+    /// position while owning the shared AP wallet and deterministic HP state.
+    /// Turn flow and damage resolution orchestration are implemented by later combat systems.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class TacticalUnit : MonoBehaviour
@@ -42,7 +42,7 @@ namespace ReactionTactics.Units
         private int currentAP;
 
         [SerializeField]
-        [Tooltip("True while the unit is available to combat systems. Damage/death rules are implemented in later tickets.")]
+        [Tooltip("True while the unit is alive and available to combat systems.")]
         private bool isAlive;
 
         public UnitId UnitId
@@ -111,6 +111,11 @@ namespace ReactionTactics.Units
         }
 
         /// <summary>
+        /// Raised once when damage reduces this unit's HP to zero.
+        /// </summary>
+        public event Action<TacticalUnit, DamageSource> Died;
+
+        /// <summary>
         /// Initializes this scene unit from a stats asset and starting grid cell.
         /// Runtime HP and AP are copied from the stats definition immediately.
         /// </summary>
@@ -151,6 +156,36 @@ namespace ReactionTactics.Units
         public void SetGridPosition(GridPosition position)
         {
             currentGridPosition = ToVector3Int(position);
+        }
+
+        /// <summary>
+        /// Applies deterministic HP damage. Hit, miss, dodge, and positional-avoidance rules
+        /// are handled by action resolution before this method is called.
+        /// </summary>
+        public TacticalResult ApplyDamage(int amount, DamageSource source)
+        {
+            if (amount < 0)
+            {
+                return TacticalResult.Failure("Damage amount cannot be negative.");
+            }
+
+            if (amount == 0)
+            {
+                return TacticalResult.Success();
+            }
+
+            if (IsDead)
+            {
+                return TacticalResult.Failure($"{DisplayName} is already defeated.");
+            }
+
+            currentHP = Math.Max(0, currentHP - amount);
+            if (currentHP == 0)
+            {
+                MarkDead(source);
+            }
+
+            return TacticalResult.Success();
         }
 
         /// <summary>
@@ -214,6 +249,18 @@ namespace ReactionTactics.Units
             return IsInitialized
                 ? $"{DisplayName} {UnitId} [{team}] at {CurrentGridPosition} HP {currentHP}/{MaxHP} AP {currentAP}/{MaxAP}"
                 : $"Uninitialized TacticalUnit '{name}' at {CurrentGridPosition}";
+        }
+
+        private void MarkDead(DamageSource source)
+        {
+            currentHP = 0;
+            if (!isAlive)
+            {
+                return;
+            }
+
+            isAlive = false;
+            Died?.Invoke(this, source);
         }
 
         private void Reset()

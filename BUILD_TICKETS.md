@@ -1304,7 +1304,7 @@ unity-ctrl --project "$PWD" test --filter ActionPointTests
 
 ## 044 — Add health and damage behavior
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add unit health and damage behavior`
 
