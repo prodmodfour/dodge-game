@@ -8,9 +8,9 @@ using UnityEngine;
 namespace ReactionTactics.Turns
 {
     /// <summary>
-    /// Scene-level shell for the high-level combat loop. This first version only
-    /// starts combat, refreshes round AP, and selects the first active unit; actions,
-    /// end-turn behavior, reactions, and win/loss checks are added by later tickets.
+    /// Scene-level shell for the high-level combat loop. It starts combat, refreshes
+    /// round AP, advances active turns, and listens for routed end-turn requests;
+    /// actions, reactions, and win/loss checks are added by later tickets.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class CombatManager : MonoBehaviour
@@ -36,12 +36,13 @@ namespace ReactionTactics.Turns
         private bool startCombatOnStart = true;
 
         [SerializeField]
-        [Tooltip("Write concise round-start and active-unit logs when combat begins.")]
+        [Tooltip("Write concise round-start and active-unit logs while the prototype combat loop advances.")]
         private bool logCombatStart = true;
 
         private readonly CombatState currentState = new CombatState();
         private readonly TurnOrderService turnOrderService = new TurnOrderService();
         private readonly RoundLifecycleService roundLifecycleService = new RoundLifecycleService();
+        private PlayerCommandRouter subscribedInputRouter;
 
         public CombatState CurrentState
         {
@@ -94,10 +95,16 @@ namespace ReactionTactics.Turns
             PlayerCommandRouter inputRouter,
             CombatEventBus eventBus = null)
         {
+            UnsubscribeFromInputRouter();
             this.unitRegistry = unitRegistry;
             this.gridManager = gridManager;
             this.inputRouter = inputRouter;
             this.eventBus = eventBus;
+
+            if (isActiveAndEnabled)
+            {
+                SubscribeToInputRouter();
+            }
         }
 
         /// <summary>
@@ -149,9 +156,56 @@ namespace ReactionTactics.Turns
             return TacticalResult.Success();
         }
 
+        /// <summary>
+        /// Ends the current active unit's turn. The next living unit in deterministic
+        /// order becomes active, or a new round starts and refreshes AP when the order is exhausted.
+        /// </summary>
+        public TacticalResult EndActiveTurn()
+        {
+            if (!currentState.IsActiveUnitPhase)
+            {
+                return TacticalResult.Failure($"Cannot end the active turn while combat phase is {currentState.Phase}.");
+            }
+
+            if (currentState.ActiveUnit == null)
+            {
+                return TacticalResult.Failure("Cannot end the active turn because no active unit is selected.");
+            }
+
+            if (unitRegistry == null)
+            {
+                return TacticalResult.Failure($"Cannot end the active turn because {nameof(UnitRegistry)} is missing.");
+            }
+
+            var previousActiveUnit = currentState.ActiveUnit;
+            if (turnOrderService.TryAdvanceToNext())
+            {
+                if (!turnOrderService.TryGetCurrentActiveUnit(out var nextActiveUnit))
+                {
+                    return TacticalResult.Failure("Turn order advanced but no living active unit could be selected.");
+                }
+
+                SetActiveTurn(previousActiveUnit, nextActiveUnit);
+                return TacticalResult.Success();
+            }
+
+            return StartNextRoundAfterTurnOrderEnds(previousActiveUnit);
+        }
+
         private void Awake()
         {
             ResolveSceneReferences();
+        }
+
+        private void OnEnable()
+        {
+            ResolveSceneReferences();
+            SubscribeToInputRouter();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeFromInputRouter();
         }
 
         private void Start()
@@ -194,6 +248,7 @@ namespace ReactionTactics.Turns
                 return TacticalResult.Failure($"{nameof(CombatManager)} requires a {nameof(PlayerCommandRouter)} reference.");
             }
 
+            SubscribeToInputRouter();
             return TacticalResult.Success();
         }
 
@@ -222,6 +277,83 @@ namespace ReactionTactics.Turns
                     eventBus = FindAnyObjectByType<CombatEventBus>();
                 }
             }
+        }
+
+        private TacticalResult StartNextRoundAfterTurnOrderEnds(TacticalUnit previousActiveUnit)
+        {
+            var livingUnits = unitRegistry.GetLivingUnits();
+            if (livingUnits.Count == 0)
+            {
+                currentState.SetState(currentState.CurrentRound, CombatPhase.CombatOver, null);
+                eventBus?.PublishActiveUnitChanged(previousActiveUnit, null);
+                return TacticalResult.Failure("Cannot start a new round because no living units remain.");
+            }
+
+            roundLifecycleService.StartNextRound(currentState, livingUnits, eventBus);
+            turnOrderService.SetUnits(livingUnits);
+
+            if (!turnOrderService.TryGetCurrentActiveUnit(out var nextActiveUnit))
+            {
+                currentState.SetState(currentState.CurrentRound, CombatPhase.CombatOver, null);
+                eventBus?.PublishActiveUnitChanged(previousActiveUnit, null);
+                return TacticalResult.Failure("Cannot start a new round because no living unit could be selected as active.");
+            }
+
+            SetActiveTurn(previousActiveUnit, nextActiveUnit);
+            return TacticalResult.Success();
+        }
+
+        private void SetActiveTurn(TacticalUnit previousActiveUnit, TacticalUnit nextActiveUnit)
+        {
+            currentState.SetState(currentState.CurrentRound, CombatPhase.ActiveTurn, nextActiveUnit);
+            eventBus?.PublishActiveUnitChanged(previousActiveUnit, nextActiveUnit);
+
+            if (logCombatStart)
+            {
+                Debug.Log($"Reaction Tactics active unit: {nextActiveUnit.DisplayName} {nextActiveUnit.UnitId} [{nextActiveUnit.Team}] at {nextActiveUnit.CurrentGridPosition}.", this);
+            }
+        }
+
+        private void HandleCommandRequested(PlayerCommandRequest request)
+        {
+            if (request.CommandType != PlayerCommandType.EndTurn)
+            {
+                return;
+            }
+
+            var result = EndActiveTurn();
+            if (result.IsFailure)
+            {
+                Debug.LogWarning($"{nameof(CombatManager)} could not end turn: {result.ErrorMessage}", this);
+            }
+        }
+
+        private void SubscribeToInputRouter()
+        {
+            if (inputRouter == null)
+            {
+                return;
+            }
+
+            if (subscribedInputRouter == inputRouter)
+            {
+                return;
+            }
+
+            UnsubscribeFromInputRouter();
+            subscribedInputRouter = inputRouter;
+            subscribedInputRouter.CommandRequested += HandleCommandRequested;
+        }
+
+        private void UnsubscribeFromInputRouter()
+        {
+            if (subscribedInputRouter == null)
+            {
+                return;
+            }
+
+            subscribedInputRouter.CommandRequested -= HandleCommandRequested;
+            subscribedInputRouter = null;
         }
 
         private TacticalResult EnsureRegistryHasUnits()

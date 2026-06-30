@@ -1896,7 +1896,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 064 — Add end turn behavior
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: allow active units to end turn`
 
