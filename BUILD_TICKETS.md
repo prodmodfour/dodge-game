@@ -3779,7 +3779,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 129 — Add AI integration tests
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: cover ai active and reaction decisions`
 
