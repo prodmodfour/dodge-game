@@ -3058,7 +3058,7 @@ unity-ctrl --project "$PWD" test --filter BraceResolutionTests
 
 ## 104 — Prevent nested full reaction windows
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: prevent nested reaction windows`
 

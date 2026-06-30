@@ -49,6 +49,12 @@ namespace ReactionTactics.Actions
                 return phaseResult;
             }
 
+            var reactionWindowRuleResult = ValidateReactionWindowTriggerRule(context);
+            if (reactionWindowRuleResult.IsFailure)
+            {
+                return reactionWindowRuleResult;
+            }
+
             var apResult = ValidateActionPoints(context.Actor, context.Ability);
             if (apResult.IsFailure)
             {
@@ -218,6 +224,18 @@ namespace ReactionTactics.Actions
             }
 
             return TacticalResult.Success();
+        }
+
+        private static TacticalResult ValidateReactionWindowTriggerRule(AbilityTargetValidationContext context)
+        {
+            if (context.RequestedUsage != AbilityUsage.Reaction || !context.Ability.TriggersReactions)
+            {
+                return TacticalResult.Success();
+            }
+
+            return TacticalResult.Failure(
+                $"{DescribeUnit(context.Actor)} cannot use {DescribeAbility(context.Ability)} as a reaction because reactions do not trigger full reaction windows in this prototype. "
+                + "Future special reactions must define an explicit nested-window rule instead of using the default reaction command path.");
         }
 
         private static TacticalResult ValidateActionPoints(TacticalUnit actor, AbilityDefinition ability)

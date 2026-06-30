@@ -182,6 +182,43 @@ namespace ReactionTactics.Turns
         }
 
         /// <summary>
+        /// Validates whether a full reaction window may open for an action intent. The
+        /// prototype only opens these windows from active actions; nested windows while
+        /// another action is pending are rejected so reaction commands cannot recurse.
+        /// Future special reactions should add an explicit opt-in rule instead of
+        /// bypassing this guard.
+        /// </summary>
+        public TacticalResult ValidateCanOpenReactionWindow(ActionIntent intent)
+        {
+            if (intent == null)
+            {
+                return TacticalResult.Failure("Cannot open a reaction window because the source action intent is missing.");
+            }
+
+            if (!intent.TriggersReactionWindow)
+            {
+                return TacticalResult.Failure(
+                    $"Cannot open a reaction window for '{intent.Ability.DisplayName}' because the ability does not trigger reactions.");
+            }
+
+            if (currentReactionWindow != null && currentReactionWindow.IsOpen)
+            {
+                return TacticalResult.Failure(
+                    $"Cannot open a nested reaction window for '{intent.Ability.DisplayName}' while '{currentReactionWindow.SourceIntent.Ability.DisplayName}' already has an open reaction window. "
+                    + "Reactions do not trigger full reaction windows in this prototype; future special reactions need an explicit nested-window rule.");
+            }
+
+            if (currentState.IsReactionPhase || currentState.IsResolvingAction || currentState.HasPendingActionIntent)
+            {
+                return TacticalResult.Failure(
+                    $"Cannot open a reaction window for '{intent.Ability.DisplayName}' while another action is pending in phase {currentState.Phase}. "
+                    + "Reaction commands cannot recursively start full reaction windows in this prototype.");
+            }
+
+            return TacticalResult.Success();
+        }
+
+        /// <summary>
         /// Returns true when the given unit may choose or confirm active-turn actions.
         /// </summary>
         public bool CanUnitTakeAction(TacticalUnit unit)
@@ -767,9 +804,10 @@ namespace ReactionTactics.Turns
 
         private TacticalResult OpenReactionWindow(ActionIntent intent)
         {
-            if (intent == null)
+            var nestingGuardResult = ValidateCanOpenReactionWindow(intent);
+            if (nestingGuardResult.IsFailure)
             {
-                return TacticalResult.Failure("Cannot open a reaction window because the source action intent is missing.");
+                return nestingGuardResult;
             }
 
             if (unitRegistry == null)
