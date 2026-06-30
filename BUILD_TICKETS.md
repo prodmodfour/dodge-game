@@ -3644,7 +3644,7 @@ unity-ctrl --project "$PWD" test --filter AiMeleeActionTests
 
 ## 124 — Implement AI cone action
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: let ai use cone attacks when valuable`
 
