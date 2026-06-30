@@ -4372,7 +4372,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 149 — Capture prototype screenshots for review
 
-Status: TODO
+Status: DONE
 
 **Commit:** `docs: add prototype review screenshots`
 
