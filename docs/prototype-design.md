@@ -64,6 +64,13 @@ Melee uses declaration-in-range, resolution-after-reactions timing:
 6. If the target is alive and still in melee range, the attack hits and applies deterministic damage.
 7. If the target is no longer in melee range, the attack is avoided by movement. This is not a dodge roll or miss chance.
 
+## Line of sight
+
+- Prototype line of sight uses a simple projected grid line across horizontal `x/z` coordinates between origin and target.
+- The sampled line resolves each horizontal coordinate to the map cell's actual terrain height, but height differences do not bend or block sight by themselves.
+- Intermediate cells marked `blocksLineOfSight` block ranged targeting through them.
+- Origin and target cells do not block their own line; only missing cells or sight blockers between them stop the query.
+
 ## Ranged cone timing
 
 - Cone attacks are declared by choosing a target cell or direction from the actor's origin position.

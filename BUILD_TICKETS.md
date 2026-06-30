@@ -2657,7 +2657,7 @@ unity-ctrl --project "$PWD" test --filter ConeResolutionTests
 
 ## 090 — Add simple line-of-sight service
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add simple grid line of sight service`
 
