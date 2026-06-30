@@ -2771,7 +2771,7 @@ unity-ctrl --project "$PWD" test --filter DeterministicAttackResolution
 
 ## 094 — Add reaction window model
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add reaction window model`
 
