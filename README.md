@@ -62,6 +62,10 @@ By default, successful cycles push commits. Use `--no-push` to keep commits loca
 
 If an agent run fails after making file changes or commits, the loop checkpoints those failed-run changes, pushes the current branch unless `--no-push` is set, and retries the same cycle.
 
+## Prototype in-game help
+
+Press `H` in play mode to show or hide the prototype rules overlay. It summarizes active-turn actions, off-turn reactions, reaction ordering, movement-based avoidance, and the no-dodge-chance combat rule for new playtesters.
+
 ## Unity workflow
 
 Autonomous Unity work should follow the project brief, `CLAUDE.md`, and the Unity skill workflow:

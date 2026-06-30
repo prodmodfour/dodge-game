@@ -1115,6 +1115,7 @@ GameObject:
   - component: {fileID: 1047836518}
   - component: {fileID: 1047836519}
   - component: {fileID: 1047836520}
+  - component: {fileID: 1047836521}
   m_Layer: 0
   m_Name: UI
   m_TagString: Untagged
@@ -1366,6 +1367,34 @@ MonoBehaviour:
   showRestartButton: 1
   restartHotkeyEnabled: 1
   restartShortcut: 114
+--- !u!114 &1047836521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047836510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 729ec7926ce3b1b56b5064c3c84d0031, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.PrototypeRulesHelpOverlay
+  visible: 1
+  showClosedHint: 1
+  toggleShortcut: 104
+  panelRect:
+    serializedVersion: 2
+    x: 388
+    y: 12
+    width: 460
+    height: 260
+  hintRect:
+    serializedVersion: 2
+    x: 12
+    y: 12
+    width: 160
+    height: 32
+  panelTitle: Prototype Rules (H)
 --- !u!1 &1092979089
 GameObject:
   m_ObjectHideFlags: 0

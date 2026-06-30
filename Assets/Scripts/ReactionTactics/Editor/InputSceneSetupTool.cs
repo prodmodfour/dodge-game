@@ -56,6 +56,7 @@ namespace ReactionTactics.Editor
                 var reactionMenuCreated = false;
                 var combatLogCreated = false;
                 var combatEndPanelCreated = false;
+                var rulesHelpOverlayCreated = false;
                 var gridHighlightManagerCreated = false;
                 var activeMovementPreviewCreated = false;
                 var actionDangerPreviewCreated = false;
@@ -74,6 +75,7 @@ namespace ReactionTactics.Editor
                 var reactionMenu = EnsureSceneComponent<ReactionMenu>(scene, uiRoot, ref reactionMenuCreated);
                 var combatLog = EnsureSceneComponent<CombatLogView>(scene, uiRoot, ref combatLogCreated);
                 var combatEndPanel = EnsureSceneComponent<CombatEndPanel>(scene, uiRoot, ref combatEndPanelCreated);
+                var rulesHelpOverlay = EnsureSceneComponent<PrototypeRulesHelpOverlay>(scene, uiRoot, ref rulesHelpOverlayCreated);
                 var gridManager = FindComponentInScene<GridManager>(scene);
                 var unitRegistry = FindComponentInScene<UnitRegistry>(scene);
                 var combatManager = FindComponentInScene<CombatManager>(scene);
@@ -94,6 +96,7 @@ namespace ReactionTactics.Editor
                 ConfigureReactionMenu(reactionMenu, commandRouter, selectionController, combatManager);
                 ConfigureCombatLog(combatLog, combatEventBus);
                 ConfigureCombatEndPanel(combatEndPanel, combatManager, combatEventBus);
+                ConfigureRulesHelpOverlay(rulesHelpOverlay);
                 ConfigureGridHighlightManager(gridHighlightManager, terrainView);
                 ConfigureActiveMovementPreview(activeMovementPreview, selectionController, combatManager, gridManager, unitRegistry, gridHighlightManager);
                 ConfigureActionDangerPreview(actionDangerPreview, selectionController, gridPicker, combatManager, gridManager, unitRegistry, gridHighlightManager);
@@ -150,6 +153,8 @@ namespace ReactionTactics.Editor
                     combatLogCreated,
                     combatEndPanel = GetScenePath(combatEndPanel.gameObject),
                     combatEndPanelCreated,
+                    rulesHelpOverlay = GetScenePath(rulesHelpOverlay.gameObject),
+                    rulesHelpOverlayCreated,
                     gridHighlightManager = GetScenePath(gridHighlightManager.gameObject),
                     gridHighlightManagerCreated,
                     activeMovementPreview = GetScenePath(activeMovementPreview.gameObject),
@@ -425,6 +430,16 @@ namespace ReactionTactics.Editor
             SetBool(serializedObject, "visible", true);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(combatEndPanel);
+        }
+
+        private static void ConfigureRulesHelpOverlay(PrototypeRulesHelpOverlay rulesHelpOverlay)
+        {
+            var serializedObject = new SerializedObject(rulesHelpOverlay);
+            serializedObject.Update();
+            SetBool(serializedObject, "visible", true);
+            SetBool(serializedObject, "showClosedHint", true);
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(rulesHelpOverlay);
         }
 
         private static void ConfigureGridHighlightManager(

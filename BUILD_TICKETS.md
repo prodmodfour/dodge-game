@@ -3497,7 +3497,7 @@ unity-ctrl --project "$PWD" test --filter CombatEndTests
 
 ## 119 — Add rules tooltip/help overlay
 
-Status: TODO
+Status: DONE
 
 **Commit:** `docs: add in game prototype rules overlay`
 
