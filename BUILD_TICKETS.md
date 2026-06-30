@@ -2485,7 +2485,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 084 — Implement radius AoE shape service
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: calculate radius aoe affected cells`
 
