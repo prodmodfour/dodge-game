@@ -3141,7 +3141,7 @@ unity-ctrl --project "$PWD" test --filter ReactionAutoPassTests
 
 ## 107 — Add reaction system tests
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: cover reaction windows and movement avoidance`
 
