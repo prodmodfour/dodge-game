@@ -708,7 +708,7 @@ unity-ctrl --project "$PWD" rt_find_assets --params '{"filter":"DefaultPrototype
 
 ## 023 — Add `GridManager` scene component
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid manager scene component`
 
