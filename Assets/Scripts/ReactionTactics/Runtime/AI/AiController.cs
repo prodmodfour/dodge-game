@@ -89,11 +89,35 @@ namespace ReactionTactics.AI
         public int NearestHostileDistance { get; }
     }
 
+    internal readonly struct AiReactionEscapeAssessment
+    {
+        public AiReactionEscapeAssessment(ReactionSafetyCell currentSafety, bool hasSafeDestination)
+        {
+            CurrentSafety = currentSafety;
+            HasSafeDestination = hasSafeDestination;
+        }
+
+        public ReactionSafetyCell CurrentSafety { get; }
+
+        public bool HasSafeDestination { get; }
+
+        public bool IsCurrentCellThreatened
+        {
+            get { return CurrentSafety.IsThreatened; }
+        }
+
+        public string CurrentReason
+        {
+            get { return CurrentSafety.Reason; }
+        }
+    }
+
     /// <summary>
     /// Deterministic controller for prototype enemy units. It exposes stable target
     /// selection, declares adjacent melee attacks, declares valuable cone shots and
     /// radius AoEs, advances active units toward targets when no attack currently
-    /// validates, and reaction-moves out of pending danger when a safe destination exists.
+    /// validates, reaction-moves out of pending danger when a safe destination exists,
+    /// and braces when threatened units cannot escape.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class AiController : MonoBehaviour
@@ -881,7 +905,7 @@ namespace ReactionTactics.AI
         /// <summary>
         /// Reaction AI behavior: move out of the pending action's threatened cells when
         /// the controlled reactor is currently threatened and a safe reachable cell exists;
-        /// otherwise conserve AP and pass.
+        /// brace when no safe destination exists and AP allows; otherwise pass.
         /// </summary>
         public TacticalResult TakeReactionTurn(ActionIntent sourceIntent, TacticalUnit reactor)
         {
@@ -891,7 +915,7 @@ namespace ReactionTactics.AI
         /// <summary>
         /// Reaction AI behavior: move out of the pending action's threatened cells when
         /// the controlled reactor is currently threatened and a safe reachable cell exists;
-        /// otherwise conserve AP and pass.
+        /// brace when no safe destination exists and AP allows; otherwise pass.
         /// </summary>
         public TacticalResult TakeReactionTurn(
             CombatManager manager,
@@ -915,7 +939,18 @@ namespace ReactionTactics.AI
                 return TacticalResult.Success();
             }
 
-            LogDecision($"AI controlling {reactor.DisplayName} {reactor.UnitId} [{reactor.Team}] passed reaction to {sourceIntent.Ability.DisplayName} to conserve AP.");
+            var braceResult = TryBraceIfThreatenedAndCannotEscape(manager, sourceIntent, reactor);
+            if (braceResult.IsFailure)
+            {
+                return TacticalResult.Failure(braceResult.ErrorMessage);
+            }
+
+            if (braceResult.Value)
+            {
+                return TacticalResult.Success();
+            }
+
+            LogDecision($"AI controlling {reactor.DisplayName} {reactor.UnitId} [{reactor.Team}] passed reaction to {sourceIntent.Ability.DisplayName} after finding no useful movement or brace response.");
             return manager.PassCurrentReaction(reactor);
         }
 
@@ -1066,6 +1101,158 @@ namespace ReactionTactics.AI
             LogDecision(
                 $"AI reaction-moved {DescribeUnit(reactor)} from {previousPosition} to {choice.Position} responding to {sourceIntent.Ability.DisplayName}; AP {previousAP}->{reactor.CurrentAP}. {choice.Reason}");
             return TacticalResult<bool>.Success(true);
+        }
+
+        private TacticalResult<bool> TryBraceIfThreatenedAndCannotEscape(
+            CombatManager manager,
+            ActionIntent sourceIntent,
+            TacticalUnit reactor)
+        {
+            if (manager.UnitRegistry == null)
+            {
+                LogDecision($"AI could not evaluate brace fallback for {DescribeUnit(reactor)} because no unit registry is assigned.");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var mapResult = ResolveCurrentMap(manager);
+            if (mapResult.IsFailure)
+            {
+                LogDecision($"AI could not evaluate brace fallback for {DescribeUnit(reactor)}: {mapResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var assessmentResult = TryAssessReactionEscape(
+                reactor,
+                sourceIntent,
+                mapResult.Value,
+                manager.UnitRegistry);
+            if (assessmentResult.IsFailure)
+            {
+                LogDecision($"AI could not evaluate brace fallback for {DescribeUnit(reactor)} responding to {sourceIntent.Ability.DisplayName}: {assessmentResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var assessment = assessmentResult.Value;
+            if (!assessment.IsCurrentCellThreatened)
+            {
+                LogDecision(
+                    $"AI did not brace {DescribeUnit(reactor)} against {sourceIntent.Ability.DisplayName} because the current cell is already safe. {assessment.CurrentReason}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            if (assessment.HasSafeDestination)
+            {
+                LogDecision(
+                    $"AI did not brace {DescribeUnit(reactor)} against {sourceIntent.Ability.DisplayName} because at least one safe reaction-move destination exists. {assessment.CurrentReason}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var commandResult = BraceReactionCommand.TryCreate(
+                reactor,
+                sourceIntent,
+                manager.CurrentState,
+                manager.CurrentReactionWindow);
+            if (commandResult.IsFailure)
+            {
+                LogDecision(
+                    $"AI wanted to brace {DescribeUnit(reactor)} against {sourceIntent.Ability.DisplayName} because no safe reaction-move destination exists, but brace is unavailable: {commandResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var previousAP = reactor.CurrentAP;
+            var braceResult = manager.BraceCurrentReaction(reactor);
+            if (braceResult.IsFailure)
+            {
+                return TacticalResult<bool>.Failure(braceResult.ErrorMessage);
+            }
+
+            LogDecision(
+                $"AI braced {DescribeUnit(reactor)} against {sourceIntent.Ability.DisplayName}; AP {previousAP}->{reactor.CurrentAP}. No safe reaction-move destination exists. {assessment.CurrentReason}");
+            return TacticalResult<bool>.Success(true);
+        }
+
+        private static TacticalResult<AiReactionEscapeAssessment> TryAssessReactionEscape(
+            TacticalUnit reactor,
+            ActionIntent sourceIntent,
+            IGridMap map,
+            IGridOccupancy occupancy)
+        {
+            if (reactor == null)
+            {
+                return TacticalResult<AiReactionEscapeAssessment>.Failure("Cannot assess AI reaction escape because no reacting unit was provided.");
+            }
+
+            if (sourceIntent == null)
+            {
+                return TacticalResult<AiReactionEscapeAssessment>.Failure($"Cannot assess AI reaction escape for {DescribeUnit(reactor)} because no pending action intent was provided.");
+            }
+
+            if (map == null)
+            {
+                return TacticalResult<AiReactionEscapeAssessment>.Failure($"Cannot assess AI reaction escape for {DescribeUnit(reactor)} because no grid map is available.");
+            }
+
+            if (!reactor.IsAlive)
+            {
+                return TacticalResult<AiReactionEscapeAssessment>.Failure($"Cannot assess AI reaction escape for {DescribeUnit(reactor)} because it is defeated.");
+            }
+
+            if (!map.TryGetCell(reactor.CurrentGridPosition, out _))
+            {
+                return TacticalResult<AiReactionEscapeAssessment>.Failure($"Cannot assess AI reaction escape for {DescribeUnit(reactor)} because its current cell {reactor.CurrentGridPosition} is not on the map.");
+            }
+
+            IReadOnlyDictionary<GridPosition, ReachableCell> reachableCells;
+            try
+            {
+                reachableCells = new ReachableCellSearch().FindReachableCells(
+                    map,
+                    reactor.CurrentGridPosition,
+                    reactor.CurrentAP,
+                    occupancy);
+            }
+            catch (ArgumentException exception)
+            {
+                return TacticalResult<AiReactionEscapeAssessment>.Failure(
+                    $"{DescribeUnit(reactor)} cannot assess reaction escape: {exception.Message}");
+            }
+            catch (InvalidOperationException exception)
+            {
+                return TacticalResult<AiReactionEscapeAssessment>.Failure(
+                    $"{DescribeUnit(reactor)} cannot assess reaction escape: {exception.Message}");
+            }
+
+            var safetyCells = new ReactionSafetyAnalyzer().ClassifyReachableCells(
+                reactor,
+                sourceIntent,
+                reachableCells.Values);
+            var hasCurrentSafety = false;
+            var currentSafety = default(ReactionSafetyCell);
+            var hasSafeDestination = false;
+            for (var i = 0; i < safetyCells.Count; i += 1)
+            {
+                var safetyCell = safetyCells[i];
+                if (safetyCell.Position == reactor.CurrentGridPosition)
+                {
+                    hasCurrentSafety = true;
+                    currentSafety = safetyCell;
+                    continue;
+                }
+
+                if (safetyCell.IsSafe)
+                {
+                    hasSafeDestination = true;
+                }
+            }
+
+            if (!hasCurrentSafety)
+            {
+                return TacticalResult<AiReactionEscapeAssessment>.Failure(
+                    $"{DescribeUnit(reactor)} cannot assess reaction escape because its current cell {reactor.CurrentGridPosition} was not included in reachable cells.");
+            }
+
+            return TacticalResult<AiReactionEscapeAssessment>.Success(
+                new AiReactionEscapeAssessment(currentSafety, hasSafeDestination));
         }
 
         private static TacticalResult<IGridMap> ResolveCurrentMap(CombatManager manager)

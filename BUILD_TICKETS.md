@@ -3725,7 +3725,7 @@ unity-ctrl --project "$PWD" test --filter AiReactionMoveTests
 
 ## 127 — Implement AI brace reaction
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: let ai brace when it cannot escape`
 
