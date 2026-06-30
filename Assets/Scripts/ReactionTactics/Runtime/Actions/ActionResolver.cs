@@ -15,6 +15,8 @@ namespace ReactionTactics.Actions
     /// </summary>
     public class ActionResolver
     {
+        private const bool ConeFriendlyFireEnabled = false;
+
         private readonly CombatEventBus eventBus;
         private readonly UnityEngine.Object logContext;
         private readonly bool logResolutions;
@@ -35,7 +37,8 @@ namespace ReactionTactics.Actions
         /// <summary>
         /// Resolves a declared action intent and notifies listeners that the intent is complete.
         /// Melee resolution uses Option A timing: declared target first, reactions may move units,
-        /// then damage is applied only when the target remains in final melee range.
+        /// then damage is applied only when the target remains in final melee range. Cone and AoE
+        /// resolution use declared affected cells and final unit positions without any random roll.
         /// </summary>
         public TacticalResult Resolve(ActionIntent intent)
         {
@@ -63,8 +66,7 @@ namespace ReactionTactics.Actions
         }
 
         /// <summary>
-        /// Dispatches to shape-specific resolution hooks. Later tickets replace the remaining no-op cone hook
-        /// with final-position cone resolution rules.
+        /// Dispatches to shape-specific resolution hooks.
         /// </summary>
         protected virtual TacticalResult ResolveByShape(ActionIntent intent)
         {
@@ -148,6 +150,56 @@ namespace ReactionTactics.Actions
 
         protected virtual TacticalResult ResolveCone(ActionIntent intent)
         {
+            if (intent.DeclaredAffectedCells == null || intent.DeclaredAffectedCells.Count == 0)
+            {
+                return TacticalResult.Failure($"Cannot resolve cone action '{intent.Ability.DisplayName}' because it has no declared affected cells.");
+            }
+
+            var affectedCells = new HashSet<GridPosition>(intent.DeclaredAffectedCells);
+            var livingCombatants = GetLivingCombatants();
+            var source = CreateDamageSource(intent);
+            var hitUnits = new List<string>();
+            var avoidedUnits = new List<string>();
+            var ignoredFriendlyUnits = new List<string>();
+
+            for (var i = 0; i < livingCombatants.Count; i += 1)
+            {
+                var unit = livingCombatants[i];
+                if (unit == null || !unit.IsAlive)
+                {
+                    continue;
+                }
+
+                var finalPosition = unit.CurrentGridPosition;
+                var isInsideCone = affectedCells.Contains(finalPosition);
+                var isHostile = intent.Actor.Team.IsHostileTo(unit.Team);
+
+                if (!isHostile && !ConeFriendlyFireEnabled)
+                {
+                    if (isInsideCone)
+                    {
+                        ignoredFriendlyUnits.Add($"{DescribeUnit(unit)} at {finalPosition}");
+                    }
+
+                    continue;
+                }
+
+                if (!isInsideCone)
+                {
+                    avoidedUnits.Add($"{DescribeUnit(unit)} at {finalPosition}");
+                    continue;
+                }
+
+                var damageResult = ApplyDamageAndPublishEvents(unit, intent.Ability.Damage, source);
+                if (damageResult.IsFailure)
+                {
+                    return damageResult;
+                }
+
+                hitUnits.Add($"{DescribeUnit(unit)} at {finalPosition}");
+            }
+
+            LogConeOutcome(intent, affectedCells.Count, hitUnits, avoidedUnits, ignoredFriendlyUnits);
             return TacticalResult.Success();
         }
 
@@ -265,6 +317,26 @@ namespace ReactionTactics.Actions
 
             Debug.Log(
                 $"[Combat Log] {DescribeUnit(intent.Actor)} resolved melee '{intent.Ability.DisplayName}' against {DescribeUnit(target)}: avoided by movement/position — {reason}",
+                logContext);
+        }
+
+        private void LogConeOutcome(
+            ActionIntent intent,
+            int affectedCellCount,
+            IReadOnlyList<string> hitUnits,
+            IReadOnlyList<string> avoidedUnits,
+            IReadOnlyList<string> ignoredFriendlyUnits)
+        {
+            if (!logResolutions)
+            {
+                return;
+            }
+
+            var hitText = hitUnits.Count > 0 ? string.Join(", ", hitUnits) : "none";
+            var avoidedText = avoidedUnits.Count > 0 ? string.Join(", ", avoidedUnits) : "none";
+            var ignoredFriendlyText = ignoredFriendlyUnits.Count > 0 ? string.Join(", ", ignoredFriendlyUnits) : "none";
+            Debug.Log(
+                $"[Combat Log] {DescribeUnit(intent.Actor)} resolved cone '{intent.Ability.DisplayName}' over {affectedCellCount} declared cells: hit hostiles: {hitText}; avoided hostiles: {avoidedText}; ignored friendlies (friendly fire disabled): {ignoredFriendlyText}. Damage used final grid positions with no dodge or accuracy roll.",
                 logContext);
         }
 

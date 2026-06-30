@@ -2628,7 +2628,7 @@ unity-ctrl --project "$PWD" test --filter ConeTargetValidationTests
 
 ## 089 — Implement cone resolution after reactions
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: resolve cone attacks against final positions`
 
