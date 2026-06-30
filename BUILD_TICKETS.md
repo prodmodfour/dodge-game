@@ -2455,7 +2455,7 @@ unity-ctrl --project "$PWD" test --filter OptionAMeleeResolutionTests
 
 ## 083 — Add melee attack presentation placeholder
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add melee attack presentation placeholder`
 

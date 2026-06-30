@@ -1,10 +1,12 @@
 using System;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using ReactionTactics.Actions;
 using ReactionTactics.Grid;
 using ReactionTactics.Turns;
 using ReactionTactics.Units;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace ReactionTactics.Tests.EditMode.Actions
 {
@@ -76,6 +78,83 @@ namespace ReactionTactics.Tests.EditMode.Actions
                     Assert.That(battle.Enemy.IsAlive, Is.True);
                     Assert.That(hpEvents, Is.EqualTo(0));
                     Assert.That(resolvedEvents, Is.EqualTo(1));
+                }
+                finally
+                {
+                    Destroy(ability);
+                }
+            }
+        }
+
+        [Test]
+        public void MeleePresentationFacesActorTowardTargetOnHit()
+        {
+            using (var battle = new TestBattle())
+            {
+                var ability = CreateMeleeAbility(damage: 4);
+
+                try
+                {
+                    battle.Actor.transform.rotation = Quaternion.LookRotation(Vector3.forward, Vector3.up);
+                    var intent = CreateMeleeIntent(battle, ability);
+
+                    var resolver = new ActionResolver(battle.EventBus, battle.BusObject, logResolutions: false);
+                    var result = resolver.Resolve(intent);
+
+                    Assert.That(result.IsSuccess, Is.True, result.ErrorMessage);
+                    AssertFaces(battle.Actor.transform, Vector3.right);
+                }
+                finally
+                {
+                    Destroy(ability);
+                }
+            }
+        }
+
+        [Test]
+        public void MeleePresentationFacesActorTowardFinalTargetCellWhenAvoided()
+        {
+            using (var battle = new TestBattle())
+            {
+                var ability = CreateMeleeAbility(damage: 4);
+
+                try
+                {
+                    battle.Actor.transform.rotation = Quaternion.LookRotation(Vector3.right, Vector3.up);
+                    var intent = CreateMeleeIntent(battle, ability);
+                    battle.Enemy.SetGridPosition(new GridPosition(0, 0, -2));
+
+                    var resolver = new ActionResolver(battle.EventBus, battle.BusObject, logResolutions: false);
+                    var result = resolver.Resolve(intent);
+
+                    Assert.That(result.IsSuccess, Is.True, result.ErrorMessage);
+                    AssertFaces(battle.Actor.transform, Vector3.back);
+                }
+                finally
+                {
+                    Destroy(ability);
+                }
+            }
+        }
+
+        [Test]
+        public void MeleeResolutionWritesCombatLogOutcome()
+        {
+            using (var battle = new TestBattle())
+            {
+                var ability = CreateMeleeAbility(damage: 4);
+
+                try
+                {
+                    var intent = CreateMeleeIntent(battle, ability);
+                    LogAssert.Expect(
+                        LogType.Log,
+                        new Regex(@"\[Combat Log\].*resolved melee 'Melee Slash'.*: hit for 4 damage"));
+
+                    var resolver = new ActionResolver(battle.EventBus, battle.BusObject, logResolutions: true);
+                    var result = resolver.Resolve(intent);
+
+                    Assert.That(result.IsSuccess, Is.True, result.ErrorMessage);
                 }
                 finally
                 {
@@ -211,6 +290,15 @@ namespace ReactionTactics.Tests.EditMode.Actions
                 meleeRange: meleeRange,
                 teamColorHint: Color.white);
             return stats;
+        }
+
+        private static void AssertFaces(Transform transform, Vector3 expectedForward)
+        {
+            var actualForward = transform.forward;
+            actualForward.y = 0f;
+            actualForward.Normalize();
+
+            Assert.That(Vector3.Dot(actualForward, expectedForward.normalized), Is.GreaterThan(0.99f));
         }
 
         private static void Destroy(UnityEngine.Object asset)

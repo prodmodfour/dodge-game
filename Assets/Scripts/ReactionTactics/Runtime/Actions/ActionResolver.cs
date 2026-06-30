@@ -97,6 +97,7 @@ namespace ReactionTactics.Actions
 
             if (!target.IsAlive)
             {
+                PresentMeleeResolution(intent, target);
                 LogMeleeAvoided(intent, target, $"{DescribeUnit(target)} is no longer alive at resolution.");
                 return TacticalResult.Success();
             }
@@ -105,6 +106,7 @@ namespace ReactionTactics.Actions
             var finalDistance = intent.Actor.CurrentGridPosition.HorizontalDistanceTo(target.CurrentGridPosition);
             if (finalDistance > meleeRange)
             {
+                PresentMeleeResolution(intent, target);
                 LogMeleeAvoided(
                     intent,
                     target,
@@ -112,6 +114,7 @@ namespace ReactionTactics.Actions
                 return TacticalResult.Success();
             }
 
+            PresentMeleeResolution(intent, target);
             var source = CreateDamageSource(intent);
             var previousHP = target.CurrentHP;
             var wasAlive = target.IsAlive;
@@ -171,7 +174,7 @@ namespace ReactionTactics.Actions
             }
 
             Debug.Log(
-                $"Melee action '{intent.Ability.DisplayName}' by {DescribeUnit(intent.Actor)} hit {DescribeUnit(target)} for {previousHP - currentHP} damage at final distance {finalDistance} within melee range {meleeRange}.",
+                $"[Combat Log] {DescribeUnit(intent.Actor)} resolved melee '{intent.Ability.DisplayName}' against {DescribeUnit(target)}: hit for {previousHP - currentHP} damage at final distance {finalDistance} within melee range {meleeRange}.",
                 logContext);
         }
 
@@ -183,8 +186,13 @@ namespace ReactionTactics.Actions
             }
 
             Debug.Log(
-                $"Melee action '{intent.Ability.DisplayName}' by {DescribeUnit(intent.Actor)} did not hit {DescribeUnit(target)}: positional avoid — {reason}",
+                $"[Combat Log] {DescribeUnit(intent.Actor)} resolved melee '{intent.Ability.DisplayName}' against {DescribeUnit(target)}: avoided by movement/position — {reason}",
                 logContext);
+        }
+
+        private static void PresentMeleeResolution(ActionIntent intent, TacticalUnit target)
+        {
+            MeleeAttackPresentation.Play(intent.Actor, target);
         }
 
         private static TacticalResult ValidateIntent(ActionIntent intent)
