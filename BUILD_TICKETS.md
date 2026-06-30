@@ -2798,7 +2798,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 095 — Implement reaction distance ordering
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: order reaction turns by distance from actor`
 
