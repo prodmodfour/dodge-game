@@ -3671,7 +3671,7 @@ unity-ctrl --project "$PWD" test --filter AiConeActionTests
 
 ## 125 — Implement AI AoE action
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: let ai use aoe attacks when valuable`
 

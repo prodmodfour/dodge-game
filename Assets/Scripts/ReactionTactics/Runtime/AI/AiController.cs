@@ -53,10 +53,46 @@ namespace ReactionTactics.AI
     }
 
     /// <summary>
+    /// Value object describing the deterministic radius AoE action an AI unit selected.
+    /// </summary>
+    public readonly struct AiAoeAttackChoice
+    {
+        public AiAoeAttackChoice(
+            AbilityDefinition ability,
+            GridPosition targetCell,
+            int hostileThreatCount,
+            int friendlyThreatCount,
+            int nearestHostileDistance)
+        {
+            Ability = ability ?? throw new ArgumentNullException(nameof(ability));
+            TargetCell = targetCell;
+            HostileThreatCount = hostileThreatCount >= 0
+                ? hostileThreatCount
+                : throw new ArgumentOutOfRangeException(nameof(hostileThreatCount), hostileThreatCount, "Hostile threat count cannot be negative.");
+            FriendlyThreatCount = friendlyThreatCount >= 0
+                ? friendlyThreatCount
+                : throw new ArgumentOutOfRangeException(nameof(friendlyThreatCount), friendlyThreatCount, "Friendly threat count cannot be negative.");
+            NearestHostileDistance = nearestHostileDistance >= 0
+                ? nearestHostileDistance
+                : throw new ArgumentOutOfRangeException(nameof(nearestHostileDistance), nearestHostileDistance, "Nearest hostile distance cannot be negative.");
+        }
+
+        public AbilityDefinition Ability { get; }
+
+        public GridPosition TargetCell { get; }
+
+        public int HostileThreatCount { get; }
+
+        public int FriendlyThreatCount { get; }
+
+        public int NearestHostileDistance { get; }
+    }
+
+    /// <summary>
     /// Deterministic shell controller for prototype enemy units. It exposes stable
     /// target selection, declares adjacent melee attacks, declares valuable cone
-    /// shots, advances active units toward targets when no attack currently
-    /// validates, and still passes reaction turns until reaction-specific AI tickets are implemented.
+    /// shots and radius AoEs, advances active units toward targets when no attack
+    /// currently validates, and still passes reaction turns until reaction-specific AI tickets are implemented.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class AiController : MonoBehaviour
@@ -67,6 +103,8 @@ namespace ReactionTactics.AI
         public const string DefaultMeleeSlashDisplayName = "Melee Slash";
         public const string DefaultConeShotAbilityKey = "cone_shot";
         public const string DefaultConeShotDisplayName = "Cone Shot";
+        public const string DefaultFireballAbilityKey = "fireball";
+        public const string DefaultFireballDisplayName = "Fireball";
 
         [SerializeField]
         [Tooltip("Team controlled by this deterministic prototype AI controller.")]
@@ -565,11 +603,110 @@ namespace ReactionTactics.AI
             return TacticalResult<AiConeAttackChoice>.Success(bestChoice);
         }
 
+        public TacticalResult<AiAoeAttackChoice> TryChooseAoeAttack(
+            TacticalUnit actor,
+            IEnumerable<TacticalUnit> candidates,
+            IGridMap map,
+            CombatState combatState)
+        {
+            var contextResult = ValidateAoeAttackChoiceContext(actor, candidates, map, combatState);
+            if (contextResult.IsFailure)
+            {
+                return TacticalResult<AiAoeAttackChoice>.Failure(contextResult.ErrorMessage);
+            }
+
+            var abilityResult = TryResolveFireballAbility(actor);
+            if (abilityResult.IsFailure)
+            {
+                return TacticalResult<AiAoeAttackChoice>.Failure(abilityResult.ErrorMessage);
+            }
+
+            var ability = abilityResult.Value;
+            if (!actor.CanSpendAP(ability.APCost))
+            {
+                return TacticalResult<AiAoeAttackChoice>.Failure(
+                    $"{DescribeUnit(actor)} cannot choose {ability.DisplayName} because it needs {ability.APCost} AP but only has {actor.CurrentAP} AP.");
+            }
+
+            var candidateUnits = CollectLivingCandidateUnits(candidates);
+            var candidateTargetCells = CollectAoeTargetCellsNearHostiles(actor, ability, candidateUnits, map);
+            var hasBestChoice = false;
+            var bestChoice = default(AiAoeAttackChoice);
+
+            foreach (var targetCell in candidateTargetCells)
+            {
+                var actionTarget = ActionTarget.ForCell(targetCell);
+                var validationContext = new AbilityTargetValidationContext(
+                    actor,
+                    ability,
+                    actionTarget,
+                    AbilityUsage.Action,
+                    combatState,
+                    map);
+                if (AbilityTargetValidator.Instance.ValidateTarget(validationContext).IsFailure)
+                {
+                    continue;
+                }
+
+                var affectedCells = new HashSet<GridPosition>(
+                    AreaShapeService.GetRadiusCells(targetCell, ability.Radius, map));
+                var hostileThreatCount = 0;
+                var friendlyThreatCount = 0;
+                var nearestHostileDistance = int.MaxValue;
+
+                for (var i = 0; i < candidateUnits.Count; i += 1)
+                {
+                    var candidate = candidateUnits[i];
+                    if (!affectedCells.Contains(candidate.CurrentGridPosition))
+                    {
+                        continue;
+                    }
+
+                    if (actor.Team.IsHostileTo(candidate.Team))
+                    {
+                        hostileThreatCount += 1;
+                        nearestHostileDistance = Math.Min(
+                            nearestHostileDistance,
+                            GetTargetSelectionDistance(actor, candidate));
+                    }
+                    else if (actor.Team.IsFriendlyTo(candidate.Team))
+                    {
+                        friendlyThreatCount += 1;
+                    }
+                }
+
+                if (hostileThreatCount <= 0 || friendlyThreatCount > hostileThreatCount)
+                {
+                    continue;
+                }
+
+                var choice = new AiAoeAttackChoice(
+                    ability,
+                    targetCell,
+                    hostileThreatCount,
+                    friendlyThreatCount,
+                    nearestHostileDistance);
+                if (!hasBestChoice || CompareAoeChoices(actor, choice, bestChoice) < 0)
+                {
+                    hasBestChoice = true;
+                    bestChoice = choice;
+                }
+            }
+
+            if (!hasBestChoice)
+            {
+                return TacticalResult<AiAoeAttackChoice>.Failure(
+                    $"No valuable {ability.DisplayName} AoE target cell is available for {DescribeUnit(actor)}: every valid cell near hostiles is out of range, lacks line of sight, threatens no hostiles, or would threaten more friendlies than hostiles.");
+            }
+
+            return TacticalResult<AiAoeAttackChoice>.Success(bestChoice);
+        }
+
         /// <summary>
         /// Active-turn AI behavior: declare an adjacent melee attack when possible;
-        /// otherwise declare a valuable cone shot when available; otherwise, if no
-        /// attack currently validates, advance toward the nearest hostile with
-        /// conservative movement, then end the active turn.
+        /// otherwise declare a valuable cone shot when available; otherwise declare
+        /// a valuable AoE when available; otherwise, if no attack currently validates,
+        /// advance toward the nearest hostile with conservative movement, then end the active turn.
         /// </summary>
         public TacticalResult TakeActiveTurn()
         {
@@ -578,9 +715,9 @@ namespace ReactionTactics.AI
 
         /// <summary>
         /// Active-turn AI behavior: declare an adjacent melee attack when possible;
-        /// otherwise declare a valuable cone shot when available; otherwise, if no
-        /// attack currently validates, advance toward the nearest hostile with
-        /// conservative movement, then end the active turn.
+        /// otherwise declare a valuable cone shot when available; otherwise declare
+        /// a valuable AoE when available; otherwise, if no attack currently validates,
+        /// advance toward the nearest hostile with conservative movement, then end the active turn.
         /// </summary>
         public TacticalResult TakeActiveTurn(CombatManager manager)
         {
@@ -611,6 +748,17 @@ namespace ReactionTactics.AI
             if (coneResult.Value)
             {
                 return CompleteActiveTurnAfterDeclaredAction(manager, activeUnit, "cone");
+            }
+
+            var aoeResult = TryDeclareAoeAttackAtBestCell(manager, activeUnit);
+            if (aoeResult.IsFailure)
+            {
+                return TacticalResult.Failure(aoeResult.ErrorMessage);
+            }
+
+            if (aoeResult.Value)
+            {
+                return CompleteActiveTurnAfterDeclaredAction(manager, activeUnit, "AoE");
             }
 
             var movementResult = TryMoveTowardNearestTarget(manager, activeUnit);
@@ -880,6 +1028,51 @@ namespace ReactionTactics.AI
             return TacticalResult<bool>.Success(true);
         }
 
+        private TacticalResult<bool> TryDeclareAoeAttackAtBestCell(CombatManager manager, TacticalUnit activeUnit)
+        {
+            if (manager.UnitRegistry == null)
+            {
+                LogDecision($"AI could not evaluate AoE actions for {DescribeUnit(activeUnit)} because no unit registry is assigned.");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var mapResult = ResolveCurrentMap(manager);
+            if (mapResult.IsFailure)
+            {
+                LogDecision($"AI could not evaluate AoE actions for {DescribeUnit(activeUnit)}: {mapResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var choiceResult = TryChooseAoeAttack(
+                activeUnit,
+                manager.UnitRegistry.GetLivingUnits(),
+                mapResult.Value,
+                manager.CurrentState);
+            if (choiceResult.IsFailure)
+            {
+                LogDecision($"AI found no AoE action for {DescribeUnit(activeUnit)}: {choiceResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var choice = choiceResult.Value;
+            var previousAP = activeUnit.CurrentAP;
+            var request = new PlayerCommandRequest(
+                PlayerCommandType.ConfirmTarget,
+                activeUnit,
+                SelectionActionMode.AreaOfEffect,
+                SelectionTarget.ForCell(choice.TargetCell),
+                SelectionState.Empty);
+            var declarationResult = manager.DeclareAndResolveSelectedAction(request);
+            if (declarationResult.IsFailure)
+            {
+                return TacticalResult<bool>.Failure(declarationResult.ErrorMessage);
+            }
+
+            LogDecision(
+                $"AI declared {choice.Ability.DisplayName} with {DescribeUnit(activeUnit)} at {choice.TargetCell}; threatened {choice.HostileThreatCount} hostile(s) and {choice.FriendlyThreatCount} friendly unit(s); AP {previousAP}->{activeUnit.CurrentAP}.");
+            return TacticalResult<bool>.Success(true);
+        }
+
         private static TacticalResult<AbilityDefinition> TryResolveMeleeSlashAbility(TacticalUnit actor)
         {
             if (actor == null)
@@ -964,6 +1157,48 @@ namespace ReactionTactics.AI
             return TacticalResult<AbilityDefinition>.Failure($"{DescribeUnit(actor)} has no active {DefaultConeShotDisplayName} ability assigned.");
         }
 
+        private static TacticalResult<AbilityDefinition> TryResolveFireballAbility(TacticalUnit actor)
+        {
+            if (actor == null)
+            {
+                return TacticalResult<AbilityDefinition>.Failure("Cannot choose an AoE action because no acting unit was provided.");
+            }
+
+            var loadout = actor.GetComponent<UnitAbilityLoadout>();
+            if (loadout == null)
+            {
+                return TacticalResult<AbilityDefinition>.Failure($"{DescribeUnit(actor)} has no ability loadout for {DefaultFireballDisplayName}.");
+            }
+
+            AbilityDefinition fallback = null;
+            var actionAbilities = loadout.GetActionAbilities();
+            for (var i = 0; i < actionAbilities.Count; i += 1)
+            {
+                var ability = actionAbilities[i];
+                if (!IsRadiusAttackAbility(ability))
+                {
+                    continue;
+                }
+
+                if (IsDefaultFireballAbility(ability))
+                {
+                    return TacticalResult<AbilityDefinition>.Success(ability);
+                }
+
+                if (fallback == null)
+                {
+                    fallback = ability;
+                }
+            }
+
+            if (fallback != null)
+            {
+                return TacticalResult<AbilityDefinition>.Success(fallback);
+            }
+
+            return TacticalResult<AbilityDefinition>.Failure($"{DescribeUnit(actor)} has no active {DefaultFireballDisplayName} ability assigned.");
+        }
+
         private static TacticalResult ValidateMeleeAttackChoiceContext(
             TacticalUnit actor,
             IEnumerable<TacticalUnit> candidates,
@@ -1032,6 +1267,45 @@ namespace ReactionTactics.AI
             if (!map.TryGetCell(actor.CurrentGridPosition, out _))
             {
                 return TacticalResult.Failure($"{DescribeUnit(actor)} cannot choose an AI cone action because its current cell {actor.CurrentGridPosition} is not on the map.");
+            }
+
+            return TacticalResult.Success();
+        }
+
+        private static TacticalResult ValidateAoeAttackChoiceContext(
+            TacticalUnit actor,
+            IEnumerable<TacticalUnit> candidates,
+            IGridMap map,
+            CombatState combatState)
+        {
+            if (actor == null)
+            {
+                return TacticalResult.Failure("Cannot choose an AI AoE action because no acting unit was provided.");
+            }
+
+            if (candidates == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI AoE action for {DescribeUnit(actor)} because no candidate units were provided.");
+            }
+
+            if (map == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI AoE action for {DescribeUnit(actor)} because no grid map is available.");
+            }
+
+            if (combatState == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI AoE action for {DescribeUnit(actor)} because combat state is missing.");
+            }
+
+            if (!actor.IsAlive)
+            {
+                return TacticalResult.Failure($"{DescribeUnit(actor)} cannot choose an AI AoE action because it is defeated.");
+            }
+
+            if (!map.TryGetCell(actor.CurrentGridPosition, out _))
+            {
+                return TacticalResult.Failure($"{DescribeUnit(actor)} cannot choose an AI AoE action because its current cell {actor.CurrentGridPosition} is not on the map.");
             }
 
             return TacticalResult.Success();
@@ -1165,6 +1439,14 @@ namespace ReactionTactics.AI
                 && ability.Damage > 0;
         }
 
+        private static bool IsRadiusAttackAbility(AbilityDefinition ability)
+        {
+            return ability != null
+                && ability.CanBeUsedAsAction
+                && ability.Shape == AbilityShape.Radius
+                && ability.Damage > 0;
+        }
+
         private static bool IsDefaultMeleeSlashAbility(AbilityDefinition ability)
         {
             return ability != null
@@ -1177,6 +1459,13 @@ namespace ReactionTactics.AI
             return ability != null
                 && (string.Equals(ability.AbilityKey, DefaultConeShotAbilityKey, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(ability.DisplayName, DefaultConeShotDisplayName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool IsDefaultFireballAbility(AbilityDefinition ability)
+        {
+            return ability != null
+                && (string.Equals(ability.AbilityKey, DefaultFireballAbilityKey, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(ability.DisplayName, DefaultFireballDisplayName, StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool TryCreateAttackTarget(
@@ -1226,6 +1515,36 @@ namespace ReactionTactics.AI
             }
 
             return livingUnits;
+        }
+
+        private static IReadOnlyList<GridPosition> CollectAoeTargetCellsNearHostiles(
+            TacticalUnit actor,
+            AbilityDefinition ability,
+            IReadOnlyList<TacticalUnit> candidateUnits,
+            IGridMap map)
+        {
+            var targetCells = new HashSet<GridPosition>();
+            for (var i = 0; i < candidateUnits.Count; i += 1)
+            {
+                var candidate = candidateUnits[i];
+                if (candidate == null || !actor.Team.IsHostileTo(candidate.Team))
+                {
+                    continue;
+                }
+
+                var cellsNearHostile = AreaShapeService.GetRadiusCells(
+                    candidate.CurrentGridPosition,
+                    ability.Radius,
+                    map);
+                for (var cellIndex = 0; cellIndex < cellsNearHostile.Count; cellIndex += 1)
+                {
+                    targetCells.Add(cellsNearHostile[cellIndex]);
+                }
+            }
+
+            var sortedTargetCells = new List<GridPosition>(targetCells);
+            sortedTargetCells.Sort(CompareGridPositions);
+            return sortedTargetCells;
         }
 
         private static bool TryFindConeDeclarationCell(
@@ -1312,6 +1631,36 @@ namespace ReactionTactics.AI
             if (directionComparison != 0)
             {
                 return directionComparison;
+            }
+
+            return CompareGridPositions(left.TargetCell, right.TargetCell);
+        }
+
+        private static int CompareAoeChoices(TacticalUnit actor, AiAoeAttackChoice left, AiAoeAttackChoice right)
+        {
+            var hostileComparison = right.HostileThreatCount.CompareTo(left.HostileThreatCount);
+            if (hostileComparison != 0)
+            {
+                return hostileComparison;
+            }
+
+            var friendlyComparison = left.FriendlyThreatCount.CompareTo(right.FriendlyThreatCount);
+            if (friendlyComparison != 0)
+            {
+                return friendlyComparison;
+            }
+
+            var distanceComparison = left.NearestHostileDistance.CompareTo(right.NearestHostileDistance);
+            if (distanceComparison != 0)
+            {
+                return distanceComparison;
+            }
+
+            var targetCellDistanceComparison = actor.CurrentGridPosition.HorizontalDistanceTo(left.TargetCell)
+                .CompareTo(actor.CurrentGridPosition.HorizontalDistanceTo(right.TargetCell));
+            if (targetCellDistanceComparison != 0)
+            {
+                return targetCellDistanceComparison;
             }
 
             return CompareGridPositions(left.TargetCell, right.TargetCell);
