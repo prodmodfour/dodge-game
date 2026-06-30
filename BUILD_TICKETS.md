@@ -1110,7 +1110,7 @@ unity-ctrl --project "$PWD" test --filter OccupancyAwarePathfindingTests
 
 ## 037 — Add movement command model
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add movement command model`
 
