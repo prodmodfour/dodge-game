@@ -51,6 +51,26 @@ namespace ReactionTactics.Pathfinding
         }
 
         /// <summary>
+        /// Finds the cheapest ordered path from <paramref name="start"/> to
+        /// <paramref name="destination"/> without exceeding <paramref name="apBudget"/>.
+        /// </summary>
+        public GridPath TryFindPath(
+            IGridMap map,
+            GridPosition start,
+            GridPosition destination,
+            int apBudget)
+        {
+            return TryFindPath(
+                map,
+                start,
+                destination,
+                apBudget,
+                defaultNeighborService,
+                defaultMovementCostService,
+                null);
+        }
+
+        /// <summary>
         /// Finds every cell that can be reached from <paramref name="start"/> without exceeding
         /// <paramref name="apBudget"/>. <paramref name="canEnterPosition"/> is an optional
         /// occupancy query: return false for occupied or otherwise unavailable destinations.
@@ -153,6 +173,97 @@ namespace ReactionTactics.Pathfinding
             }
 
             return new ReadOnlyDictionary<GridPosition, ReachableCell>(reachableCells);
+        }
+
+        /// <summary>
+        /// Finds the cheapest ordered path from <paramref name="start"/> to
+        /// <paramref name="destination"/> without exceeding <paramref name="apBudget"/>.
+        /// <paramref name="canEnterPosition"/> is an optional occupancy-style predicate matching
+        /// the full reachable-cell search overload.
+        /// </summary>
+        public GridPath TryFindPath(
+            IGridMap map,
+            GridPosition start,
+            GridPosition destination,
+            int apBudget,
+            GridNeighborService neighborService,
+            MovementCostService movementCostService,
+            Func<GridPosition, bool> canEnterPosition)
+        {
+            var reachableCells = FindReachableCells(
+                map,
+                start,
+                apBudget,
+                neighborService,
+                movementCostService,
+                canEnterPosition);
+
+            if (!reachableCells.ContainsKey(destination))
+            {
+                return GridPath.Failure(
+                    $"Destination {destination} is not reachable from {start} within {apBudget} AP.");
+            }
+
+            return ReconstructPath(start, destination, reachableCells);
+        }
+
+        private static GridPath ReconstructPath(
+            GridPosition start,
+            GridPosition destination,
+            IReadOnlyDictionary<GridPosition, ReachableCell> reachableCells)
+        {
+            var reversedCells = new List<ReachableCell>();
+            var visited = new HashSet<GridPosition>();
+            var current = destination;
+
+            while (true)
+            {
+                if (!visited.Add(current))
+                {
+                    return GridPath.Failure($"Path reconstruction detected a cycle at {current}.");
+                }
+
+                if (!reachableCells.TryGetValue(current, out var reachableCell))
+                {
+                    return GridPath.Failure(
+                        $"Cannot reconstruct path from {start} to {destination}: missing reachable cell {current}.");
+                }
+
+                reversedCells.Add(reachableCell);
+
+                if (current == start)
+                {
+                    break;
+                }
+
+                if (!reachableCell.PreviousPosition.HasValue)
+                {
+                    return GridPath.Failure(
+                        $"Cannot reconstruct path from {start} to {destination}: {current} has no previous cell.");
+                }
+
+                current = reachableCell.PreviousPosition.Value;
+            }
+
+            reversedCells.Reverse();
+
+            var steps = new List<PathStep>(reversedCells.Count);
+            var previousTotalApCost = 0;
+            for (var i = 0; i < reversedCells.Count; i++)
+            {
+                var cell = reversedCells[i];
+                var stepApCost = i == 0 ? 0 : cell.TotalApCost - previousTotalApCost;
+                if (stepApCost < 0)
+                {
+                    return GridPath.Failure(
+                        $"Cannot reconstruct path from {start} to {destination}: AP totals decrease at {cell.Position}.");
+                }
+
+                steps.Add(new PathStep(cell.Position, stepApCost, cell.TotalApCost));
+                previousTotalApCost = cell.TotalApCost;
+            }
+
+            return GridPath.Success(steps);
         }
 
         private static GridPosition PopCheapest(

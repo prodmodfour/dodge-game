@@ -1027,7 +1027,7 @@ unity-ctrl --project "$PWD" test --filter ReachableCellSearchTests
 
 ## 034 — Implement shortest path reconstruction
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: reconstruct shortest grid paths`
 
