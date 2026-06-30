@@ -650,7 +650,7 @@ unity-ctrl --project "$PWD" test --filter ReactionTactics.Tests.EditMode.Core
 
 ## 021 — Add serialized prototype map definition
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add prototype map definition asset type`
 
