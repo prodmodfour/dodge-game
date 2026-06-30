@@ -2365,7 +2365,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 080 — Add ability/action system tests
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: cover ability declarations and intent model`
 
