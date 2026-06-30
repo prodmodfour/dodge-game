@@ -2972,7 +2972,7 @@ unity-ctrl --project "$PWD" test --filter ActiveMoveCommandTests
 
 ## 101 — Add safe cell analyzer for pending intent
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: classify safe reaction movement cells`
 
