@@ -1113,6 +1113,7 @@ GameObject:
   - component: {fileID: 1047836516}
   - component: {fileID: 1047836517}
   - component: {fileID: 1047836518}
+  - component: {fileID: 1047836519}
   m_Layer: 0
   m_Name: UI
   m_TagString: Untagged
@@ -1224,6 +1225,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.ReactionMenu
   commandRouter: {fileID: 1092979093}
+  selectionController: {fileID: 1092979094}
   combatManager: {fileID: 1092979095}
   visible: 1
   showWhenNotReacting: 0
@@ -1313,6 +1315,30 @@ MonoBehaviour:
     width: 390
     height: 132
   panelTitle: Reaction Move Safety
+--- !u!114 &1047836519
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047836510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73a23bad3cb0b88c5aaece8e240b49bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.CombatLogView
+  eventBus: {fileID: 1092979096}
+  visible: 1
+  panelRect:
+    serializedVersion: 2
+    x: 744
+    y: 170
+    width: 440
+    height: 330
+  panelTitle: Combat Log
+  maxEntries: 24
+  showSequenceNumbers: 1
+  autoScrollToNewest: 1
 --- !u!1 &1092979089
 GameObject:
   m_ObjectHideFlags: 0

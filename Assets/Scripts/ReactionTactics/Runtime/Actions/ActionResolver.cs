@@ -263,6 +263,12 @@ namespace ReactionTactics.Actions
                 application.WasBraced,
                 application.FinalAmount);
 
+            if (application.WasBraced)
+            {
+                eventBus?.PublishCombatLog(
+                    $"{DescribeUnit(target)} braced against {intent.Ability.DisplayName}, reducing damage from {application.OriginalAmount} to {application.FinalAmount}.");
+            }
+
             if (target.CurrentHP != previousHP)
             {
                 eventBus?.PublishHitPointsChanged(target, previousHP, target.CurrentHP, source);
@@ -271,6 +277,7 @@ namespace ReactionTactics.Actions
             if (wasAlive && target.IsDead)
             {
                 eventBus?.PublishUnitDied(target, source);
+                eventBus?.PublishCombatLog($"{DescribeUnit(target)} was defeated by {intent.Ability.DisplayName}.");
             }
 
             return TacticalResult.Success();
@@ -296,6 +303,9 @@ namespace ReactionTactics.Actions
             int meleeRange,
             int finalDistance)
         {
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(intent.Actor)}'s {intent.Ability.DisplayName} hit {DescribeUnit(target)} for {previousHP - currentHP} damage because the target remained within melee range ({finalDistance}/{meleeRange}).");
+
             if (!logResolutions)
             {
                 return;
@@ -308,6 +318,9 @@ namespace ReactionTactics.Actions
 
         private void LogMeleeAvoided(ActionIntent intent, TacticalUnit target, string reason)
         {
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(target)} avoided {intent.Ability.DisplayName} by moving out of range or otherwise leaving melee reach. {reason}");
+
             if (!logResolutions)
             {
                 return;
@@ -325,14 +338,17 @@ namespace ReactionTactics.Actions
             IReadOnlyList<string> avoidedUnits,
             IReadOnlyList<string> ignoredFriendlyUnits)
         {
+            var hitText = hitUnits.Count > 0 ? string.Join(", ", hitUnits) : "none";
+            var avoidedText = avoidedUnits.Count > 0 ? string.Join(", ", avoidedUnits) : "none";
+            var ignoredFriendlyText = ignoredFriendlyUnits.Count > 0 ? string.Join(", ", ignoredFriendlyUnits) : "none";
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(intent.Actor)}'s {intent.Ability.DisplayName} resolved as a cone: hit hostiles: {hitText}; avoided by movement: {avoidedText}; ignored friendlies: {ignoredFriendlyText}. Final grid positions decide damage; no dodge or accuracy roll.");
+
             if (!logResolutions)
             {
                 return;
             }
 
-            var hitText = hitUnits.Count > 0 ? string.Join(", ", hitUnits) : "none";
-            var avoidedText = avoidedUnits.Count > 0 ? string.Join(", ", avoidedUnits) : "none";
-            var ignoredFriendlyText = ignoredFriendlyUnits.Count > 0 ? string.Join(", ", ignoredFriendlyUnits) : "none";
             Debug.Log(
                 $"[Combat Log] {DescribeUnit(intent.Actor)} resolved cone '{intent.Ability.DisplayName}' over {affectedCellCount} declared cells: hit hostiles: {hitText}; avoided hostiles: {avoidedText}; ignored friendlies (friendly fire disabled): {ignoredFriendlyText}. Damage used final grid positions with no dodge or accuracy roll.",
                 logContext);
@@ -344,13 +360,16 @@ namespace ReactionTactics.Actions
             IReadOnlyList<string> affectedUnits,
             IReadOnlyList<string> avoidedUnits)
         {
+            var affectedText = affectedUnits.Count > 0 ? string.Join(", ", affectedUnits) : "none";
+            var avoidedText = avoidedUnits.Count > 0 ? string.Join(", ", avoidedUnits) : "none";
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(intent.Actor)}'s {intent.Ability.DisplayName} resolved as an AoE: hit units: {affectedText}; avoided by movement: {avoidedText}. Final grid positions decide damage; no dodge or accuracy roll.");
+
             if (!logResolutions)
             {
                 return;
             }
 
-            var affectedText = affectedUnits.Count > 0 ? string.Join(", ", affectedUnits) : "none";
-            var avoidedText = avoidedUnits.Count > 0 ? string.Join(", ", avoidedUnits) : "none";
             Debug.Log(
                 $"[Combat Log] {DescribeUnit(intent.Actor)} resolved AoE '{intent.Ability.DisplayName}' over {affectedCellCount} declared cells: affected: {affectedText}; avoided: {avoidedText}. Damage used final grid positions with no dodge or accuracy roll.",
                 logContext);

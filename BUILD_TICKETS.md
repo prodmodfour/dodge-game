@@ -3439,7 +3439,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 117 — Add combat log UI
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add combat log ui`
 

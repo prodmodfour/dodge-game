@@ -1148,6 +1148,9 @@ namespace ReactionTactics.Turns
 
         private void LogActionDeclared(ActionIntent intent, int previousAP)
         {
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(intent.Actor)} declared {intent.Ability.DisplayName} targeting {intent.Target}; AP {previousAP}->{intent.Actor.CurrentAP}. Reactions resolve before telegraphed actions hit.");
+
             if (!logActionFlow)
             {
                 return;
@@ -1160,13 +1163,17 @@ namespace ReactionTactics.Turns
 
         private void LogReactionWindowOpened(ActionIntent intent, IReadOnlyList<TacticalUnit> orderedReactors)
         {
+            var reactionOrder = DescribeReactionOrder(intent, orderedReactors);
+            eventBus?.PublishCombatLog(
+                $"Reaction order for {intent.Ability.DisplayName}: {reactionOrder}. Units react by distance from {DescribeUnit(intent.Actor)}.");
+
             if (!logActionFlow)
             {
                 return;
             }
 
             Debug.Log(
-                $"[Combat Log] Reaction window opened for '{intent.Ability.DisplayName}' by {DescribeUnit(intent.Actor)}. Order: {DescribeReactionOrder(intent, orderedReactors)}.",
+                $"[Combat Log] Reaction window opened for '{intent.Ability.DisplayName}' by {DescribeUnit(intent.Actor)}. Order: {reactionOrder}.",
                 this);
         }
 
@@ -1175,14 +1182,16 @@ namespace ReactionTactics.Turns
             TacticalUnit reactor,
             ReactionEligibilityResult eligibility)
         {
+            var reason = string.IsNullOrEmpty(eligibility.Reason)
+                ? "auto-passed by reaction eligibility rules"
+                : eligibility.Reason;
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(reactor)} auto-passed reaction to {intent.Ability.DisplayName}: {reason}.");
+
             if (!logActionFlow)
             {
                 return;
             }
-
-            var reason = string.IsNullOrEmpty(eligibility.Reason)
-                ? "auto-passed by reaction eligibility rules"
-                : eligibility.Reason;
 
             Debug.Log(
                 $"[Combat Log] Reaction auto-pass: {DescribeUnit(reactor)} responding to '{intent.Ability.DisplayName}' from {DescribeUnit(intent.Actor)} — {reason}.",
@@ -1194,14 +1203,16 @@ namespace ReactionTactics.Turns
             TacticalUnit reactor,
             ReactionEligibilityResult eligibility)
         {
+            var reason = string.IsNullOrEmpty(eligibility.Reason)
+                ? "waiting for an explicit reaction command"
+                : eligibility.Reason;
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(reactor)} can react to {intent.Ability.DisplayName} from {DescribeUnit(intent.Actor)}: {reason}. Pass costs 0 AP.");
+
             if (!logActionFlow)
             {
                 return;
             }
-
-            var reason = string.IsNullOrEmpty(eligibility.Reason)
-                ? "waiting for an explicit reaction command"
-                : eligibility.Reason;
 
             Debug.Log(
                 $"[Combat Log] Reaction turn started: {DescribeUnit(reactor)} responding to '{intent.Ability.DisplayName}' from {DescribeUnit(intent.Actor)} — {reason}. Pass is available for 0 AP.",
@@ -1210,6 +1221,9 @@ namespace ReactionTactics.Turns
 
         private void LogReactionPass(PassReactionCommand command)
         {
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(command.Reactor)} passed reaction to {command.SourceIntent.Ability.DisplayName} for {command.Cost} AP.");
+
             if (!logActionFlow)
             {
                 return;
@@ -1254,6 +1268,9 @@ namespace ReactionTactics.Turns
 
         private void LogActiveMove(ActiveMoveCommand command, GridPosition previousPosition, int previousAP)
         {
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(command.Unit)} moved on its active turn from {previousPosition} to {command.Destination}; AP {previousAP}->{command.Unit.CurrentAP}.");
+
             if (!logActionFlow)
             {
                 return;
@@ -1266,6 +1283,9 @@ namespace ReactionTactics.Turns
 
         private void LogReactionMove(ReactionMoveCommand command, GridPosition previousPosition, int previousAP)
         {
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(command.Reactor)} reaction-moved from {previousPosition} to {command.Destination} in response to {command.SourceIntent.Ability.DisplayName}; AP {previousAP}->{command.Reactor.CurrentAP}.");
+
             if (!logActionFlow)
             {
                 return;
@@ -1278,6 +1298,9 @@ namespace ReactionTactics.Turns
 
         private void LogReactionBrace(BraceReactionCommand command, int previousAP)
         {
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(command.Reactor)} braced against {command.SourceIntent.Ability.DisplayName} for {command.Cost} AP; next incoming damage is reduced by {command.DamageReduction}. AP {previousAP}->{command.Reactor.CurrentAP}.");
+
             if (!logActionFlow)
             {
                 return;
@@ -1290,6 +1313,9 @@ namespace ReactionTactics.Turns
 
         private void LogReactionWindowClosed(ActionIntent intent, ReactionWindow window)
         {
+            eventBus?.PublishCombatLog(
+                $"All reactions for {intent.Ability.DisplayName} are complete ({window.ProcessedReactorCount}/{window.ReactorCount}). Resolving the original action now.");
+
             if (!logActionFlow)
             {
                 return;
@@ -1323,6 +1349,9 @@ namespace ReactionTactics.Turns
 
         private void LogBraceExpiredAfterPendingAction(TacticalUnit reactor, ActionIntent intent)
         {
+            eventBus?.PublishCombatLog(
+                $"{DescribeUnit(reactor)}'s brace expired after {intent.Ability.DisplayName} resolved without consuming it.");
+
             if (!logActionFlow)
             {
                 return;

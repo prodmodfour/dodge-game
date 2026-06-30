@@ -33,6 +33,10 @@ namespace ReactionTactics.Turns
 
         public event Action<CombatEndedEvent> CombatEnded;
 
+        public event Action<CombatLogEntry> CombatLogMessageAdded;
+
+        private int combatLogSequence;
+
         public void PublishRoundStarted(int roundNumber)
         {
             var eventData = new RoundStartedEvent(roundNumber);
@@ -103,6 +107,13 @@ namespace ReactionTactics.Turns
         {
             var eventData = CombatEndedEvent.WithoutWinner();
             CombatEnded?.Invoke(eventData);
+        }
+
+        public void PublishCombatLog(string message)
+        {
+            var entry = new CombatLogEntry(combatLogSequence + 1, message, Time.time);
+            combatLogSequence = entry.SequenceNumber;
+            CombatLogMessageAdded?.Invoke(entry);
         }
     }
 }

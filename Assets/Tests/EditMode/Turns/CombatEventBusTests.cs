@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using ReactionTactics.Turns;
 using ReactionTactics.Units;
@@ -192,6 +193,38 @@ namespace ReactionTactics.Tests.EditMode.Turns
         }
 
         [Test]
+        public void CombatLogMessagesPublishSceneScopedPlainTextEntries()
+        {
+            var firstBusObject = new GameObject("First Combat Log Event Bus Test");
+            var secondBusObject = new GameObject("Second Combat Log Event Bus Test");
+
+            try
+            {
+                var firstBus = firstBusObject.AddComponent<CombatEventBus>();
+                var secondBus = secondBusObject.AddComponent<CombatEventBus>();
+                var firstEntries = new List<CombatLogEntry>();
+                var secondEntries = new List<CombatLogEntry>();
+                firstBus.CombatLogMessageAdded += firstEntries.Add;
+                secondBus.CombatLogMessageAdded += secondEntries.Add;
+
+                secondBus.PublishCombatLog("  Rogue avoided Melee Slash by moving out of range.  ");
+                secondBus.PublishCombatLog("Knight hit Goblin for 4 damage.");
+
+                Assert.That(firstEntries, Is.Empty);
+                Assert.That(secondEntries.Count, Is.EqualTo(2));
+                Assert.That(secondEntries[0].SequenceNumber, Is.EqualTo(1));
+                Assert.That(secondEntries[0].Message, Is.EqualTo("Rogue avoided Melee Slash by moving out of range."));
+                Assert.That(secondEntries[1].SequenceNumber, Is.EqualTo(2));
+                Assert.That(secondEntries[1].Message, Is.EqualTo("Knight hit Goblin for 4 damage."));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(secondBusObject);
+                UnityEngine.Object.DestroyImmediate(firstBusObject);
+            }
+        }
+
+        [Test]
         public void PublishMethodsRejectInvalidPayloads()
         {
             var busObject = new GameObject("Combat Event Validation Bus Test");
@@ -211,6 +244,7 @@ namespace ReactionTactics.Tests.EditMode.Turns
                 Assert.Throws<ArgumentNullException>(() => bus.PublishActionResolved(unit, null));
                 Assert.Throws<ArgumentNullException>(() => bus.PublishUnitDied(null, DamageSource.Unspecified));
                 Assert.Throws<ArgumentOutOfRangeException>(() => bus.PublishCombatEnded((TeamId)99));
+                Assert.Throws<ArgumentException>(() => bus.PublishCombatLog(" "));
             }
             finally
             {

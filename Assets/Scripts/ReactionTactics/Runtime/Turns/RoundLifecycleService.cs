@@ -37,6 +37,7 @@ namespace ReactionTactics.Turns
             state.SetPhase(CombatPhase.RoundStart);
 
             eventBus?.PublishRoundStarted(nextRound);
+            eventBus?.PublishCombatLog($"Round {nextRound} started. Living units refreshed their shared AP for the round.");
 
             foreach (var unit in TurnOrderService.BuildTurnOrder(units))
             {

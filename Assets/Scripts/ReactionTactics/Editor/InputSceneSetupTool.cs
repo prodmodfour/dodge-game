@@ -54,6 +54,7 @@ namespace ReactionTactics.Editor
                 var hoverOverlayCreated = false;
                 var activeActionMenuCreated = false;
                 var reactionMenuCreated = false;
+                var combatLogCreated = false;
                 var gridHighlightManagerCreated = false;
                 var activeMovementPreviewCreated = false;
                 var actionDangerPreviewCreated = false;
@@ -70,9 +71,11 @@ namespace ReactionTactics.Editor
                 var hoverOverlay = EnsureSceneComponent<HoverGridDebugOverlay>(scene, uiRoot, ref hoverOverlayCreated);
                 var activeActionMenu = EnsureSceneComponent<ActiveActionMenu>(scene, uiRoot, ref activeActionMenuCreated);
                 var reactionMenu = EnsureSceneComponent<ReactionMenu>(scene, uiRoot, ref reactionMenuCreated);
+                var combatLog = EnsureSceneComponent<CombatLogView>(scene, uiRoot, ref combatLogCreated);
                 var gridManager = FindComponentInScene<GridManager>(scene);
                 var unitRegistry = FindComponentInScene<UnitRegistry>(scene);
                 var combatManager = FindComponentInScene<CombatManager>(scene);
+                var combatEventBus = FindComponentInScene<CombatEventBus>(scene);
                 var terrainView = FindComponentInScene<GridTerrainView>(scene);
                 var gridHighlightHost = terrainView != null ? terrainView.gameObject : gridRoot;
                 var gridHighlightManager = EnsureSceneComponent<GridHighlightManager>(scene, gridHighlightHost, ref gridHighlightManagerCreated);
@@ -87,6 +90,7 @@ namespace ReactionTactics.Editor
                 ConfigureHoverOverlay(hoverOverlay, gridPicker, gridManager, unitRegistry, camera, reactionMovementSafetyPreview);
                 ConfigureActiveActionMenu(activeActionMenu, selectionController, commandRouter, combatManager);
                 ConfigureReactionMenu(reactionMenu, commandRouter, selectionController, combatManager);
+                ConfigureCombatLog(combatLog, combatEventBus);
                 ConfigureGridHighlightManager(gridHighlightManager, terrainView);
                 ConfigureActiveMovementPreview(activeMovementPreview, selectionController, combatManager, gridManager, unitRegistry, gridHighlightManager);
                 ConfigureActionDangerPreview(actionDangerPreview, selectionController, gridPicker, combatManager, gridManager, unitRegistry, gridHighlightManager);
@@ -139,6 +143,8 @@ namespace ReactionTactics.Editor
                     activeActionMenuCreated,
                     reactionMenu = GetScenePath(reactionMenu.gameObject),
                     reactionMenuCreated,
+                    combatLog = GetScenePath(combatLog.gameObject),
+                    combatLogCreated,
                     gridHighlightManager = GetScenePath(gridHighlightManager.gameObject),
                     gridHighlightManagerCreated,
                     activeMovementPreview = GetScenePath(activeMovementPreview.gameObject),
@@ -151,7 +157,8 @@ namespace ReactionTactics.Editor
                     {
                         gridManager = gridManager != null ? GetScenePath(gridManager.gameObject) : null,
                         unitRegistry = unitRegistry != null ? GetScenePath(unitRegistry.gameObject) : null,
-                        combatManager = combatManager != null ? GetScenePath(combatManager.gameObject) : null
+                        combatManager = combatManager != null ? GetScenePath(combatManager.gameObject) : null,
+                        combatEventBus = combatEventBus != null ? GetScenePath(combatEventBus.gameObject) : null
                     }
                 });
             }
@@ -387,6 +394,18 @@ namespace ReactionTactics.Editor
             SetBool(serializedObject, "showWhenNotReacting", false);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(reactionMenu);
+        }
+
+        private static void ConfigureCombatLog(
+            CombatLogView combatLog,
+            CombatEventBus combatEventBus)
+        {
+            var serializedObject = new SerializedObject(combatLog);
+            serializedObject.Update();
+            SetObjectReference(serializedObject, "eventBus", combatEventBus);
+            SetBool(serializedObject, "visible", true);
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(combatLog);
         }
 
         private static void ConfigureGridHighlightManager(
