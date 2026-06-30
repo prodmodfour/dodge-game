@@ -8,7 +8,7 @@ namespace ReactionTactics.Pathfinding
     /// <summary>
     /// Calculates all legal movement destinations within an AP budget using Dijkstra search.
     /// Terrain movement rules come from the neighbor and movement-cost services; callers may
-    /// also provide an occupancy-style predicate to reject cells that cannot currently be entered.
+    /// also provide an <see cref="IGridOccupancy"/> query to reject cells that cannot currently be entered.
     /// </summary>
     public sealed class ReachableCellSearch
     {
@@ -47,7 +47,27 @@ namespace ReactionTactics.Pathfinding
                 apBudget,
                 defaultNeighborService,
                 defaultMovementCostService,
-                null);
+                NullGridOccupancy.Instance);
+        }
+
+        /// <summary>
+        /// Finds every cell that can be reached from <paramref name="start"/> without exceeding
+        /// <paramref name="apBudget"/>, using <paramref name="occupancy"/> to reject occupied cells.
+        /// The returned dictionary always includes the start cell with total AP cost 0.
+        /// </summary>
+        public IReadOnlyDictionary<GridPosition, ReachableCell> FindReachableCells(
+            IGridMap map,
+            GridPosition start,
+            int apBudget,
+            IGridOccupancy occupancy)
+        {
+            return FindReachableCells(
+                map,
+                start,
+                apBudget,
+                defaultNeighborService,
+                defaultMovementCostService,
+                occupancy);
         }
 
         /// <summary>
@@ -67,7 +87,53 @@ namespace ReactionTactics.Pathfinding
                 apBudget,
                 defaultNeighborService,
                 defaultMovementCostService,
-                null);
+                NullGridOccupancy.Instance);
+        }
+
+        /// <summary>
+        /// Finds the cheapest ordered path from <paramref name="start"/> to
+        /// <paramref name="destination"/> without exceeding <paramref name="apBudget"/>, using
+        /// <paramref name="occupancy"/> to reject occupied cells.
+        /// </summary>
+        public GridPath TryFindPath(
+            IGridMap map,
+            GridPosition start,
+            GridPosition destination,
+            int apBudget,
+            IGridOccupancy occupancy)
+        {
+            return TryFindPath(
+                map,
+                start,
+                destination,
+                apBudget,
+                defaultNeighborService,
+                defaultMovementCostService,
+                occupancy);
+        }
+
+        /// <summary>
+        /// Finds every cell that can be reached from <paramref name="start"/> without exceeding
+        /// <paramref name="apBudget"/>. <paramref name="occupancy"/> is optional; null is treated
+        /// as <see cref="NullGridOccupancy"/>. The start cell is always allowed so callers can
+        /// treat the moving unit as occupying it.
+        /// </summary>
+        public IReadOnlyDictionary<GridPosition, ReachableCell> FindReachableCells(
+            IGridMap map,
+            GridPosition start,
+            int apBudget,
+            GridNeighborService neighborService,
+            MovementCostService movementCostService,
+            IGridOccupancy occupancy)
+        {
+            var resolvedOccupancy = occupancy ?? NullGridOccupancy.Instance;
+            return FindReachableCells(
+                map,
+                start,
+                apBudget,
+                neighborService,
+                movementCostService,
+                position => resolvedOccupancy.CanEnter(position));
         }
 
         /// <summary>
@@ -173,6 +239,31 @@ namespace ReactionTactics.Pathfinding
             }
 
             return new ReadOnlyDictionary<GridPosition, ReachableCell>(reachableCells);
+        }
+
+        /// <summary>
+        /// Finds the cheapest ordered path from <paramref name="start"/> to
+        /// <paramref name="destination"/> without exceeding <paramref name="apBudget"/>.
+        /// <paramref name="occupancy"/> is optional; null is treated as <see cref="NullGridOccupancy"/>.
+        /// </summary>
+        public GridPath TryFindPath(
+            IGridMap map,
+            GridPosition start,
+            GridPosition destination,
+            int apBudget,
+            GridNeighborService neighborService,
+            MovementCostService movementCostService,
+            IGridOccupancy occupancy)
+        {
+            var resolvedOccupancy = occupancy ?? NullGridOccupancy.Instance;
+            return TryFindPath(
+                map,
+                start,
+                destination,
+                apBudget,
+                neighborService,
+                movementCostService,
+                position => resolvedOccupancy.CanEnter(position));
         }
 
         /// <summary>

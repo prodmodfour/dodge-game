@@ -1055,7 +1055,7 @@ unity-ctrl --project "$PWD" test --filter GridPathfindingTests
 
 ## 035 — Add occupancy query interface
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid occupancy query interface`
 
