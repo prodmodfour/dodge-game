@@ -50,6 +50,7 @@ namespace ReactionTactics.Editor
                 var selectionControllerCreated = false;
                 var commandRouterCreated = false;
                 var hoverOverlayCreated = false;
+                var activeActionMenuCreated = false;
 
                 var systemsRoot = EnsureRootObject(scene, SystemsRootName, ref systemsRootCreated);
                 var uiRoot = EnsureRootObject(scene, UiRootName, ref uiRootCreated);
@@ -59,6 +60,7 @@ namespace ReactionTactics.Editor
                 var selectionController = EnsureSceneComponent<SelectionController>(scene, systemsRoot, ref selectionControllerCreated);
                 var commandRouter = EnsureSceneComponent<PlayerCommandRouter>(scene, systemsRoot, ref commandRouterCreated);
                 var hoverOverlay = EnsureSceneComponent<HoverGridDebugOverlay>(scene, uiRoot, ref hoverOverlayCreated);
+                var activeActionMenu = EnsureSceneComponent<ActiveActionMenu>(scene, uiRoot, ref activeActionMenuCreated);
                 var gridManager = FindComponentInScene<GridManager>(scene);
                 var unitRegistry = FindComponentInScene<UnitRegistry>(scene);
                 var combatManager = FindComponentInScene<CombatManager>(scene);
@@ -68,6 +70,7 @@ namespace ReactionTactics.Editor
                 ConfigureSelectionController(selectionController, gridPicker);
                 ConfigureCommandRouter(commandRouter, selectionController, gridPicker, combatManager);
                 ConfigureHoverOverlay(hoverOverlay, gridPicker, gridManager, unitRegistry, camera);
+                ConfigureActiveActionMenu(activeActionMenu, selectionController, commandRouter, combatManager);
 
                 if (gridManager != null && gridManager.RebuildMap())
                 {
@@ -109,6 +112,8 @@ namespace ReactionTactics.Editor
                     commandRouterCreated,
                     hoverOverlay = GetScenePath(hoverOverlay.gameObject),
                     hoverOverlayCreated,
+                    activeActionMenu = GetScenePath(activeActionMenu.gameObject),
+                    activeActionMenuCreated,
                     references = new
                     {
                         gridManager = gridManager != null ? GetScenePath(gridManager.gameObject) : null,
@@ -314,6 +319,22 @@ namespace ReactionTactics.Editor
             SetObjectReference(serializedObject, "sourceCamera", camera);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(hoverOverlay);
+        }
+
+        private static void ConfigureActiveActionMenu(
+            ActiveActionMenu activeActionMenu,
+            SelectionController selectionController,
+            PlayerCommandRouter commandRouter,
+            CombatManager combatManager)
+        {
+            var serializedObject = new SerializedObject(activeActionMenu);
+            serializedObject.Update();
+            SetObjectReference(serializedObject, "selectionController", selectionController);
+            SetObjectReference(serializedObject, "commandRouter", commandRouter);
+            SetObjectReference(serializedObject, "combatManager", combatManager);
+            SetBool(serializedObject, "visible", true);
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(activeActionMenu);
         }
 
         private static void SetObjectReference(SerializedObject serializedObject, string propertyName, UnityEngine.Object value)
