@@ -2069,7 +2069,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 070 — Add action target model
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add action target model`
 
