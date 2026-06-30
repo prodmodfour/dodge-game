@@ -1546,7 +1546,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 052 — Add grid mouse picking service
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid mouse picking service`
 

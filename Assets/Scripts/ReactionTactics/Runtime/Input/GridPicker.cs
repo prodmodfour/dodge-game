@@ -1,0 +1,327 @@
+using System;
+using System.Reflection;
+using ReactionTactics.Grid;
+using UnityEngine;
+
+namespace ReactionTactics.Input
+{
+    /// <summary>
+    /// Converts mouse hover and click positions into grid tile selections by raycasting from the active camera.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class GridPicker : MonoBehaviour
+    {
+        private const float DefaultMaxRaycastDistance = 500f;
+        private const int MaxRaycastHits = 64;
+
+        [SerializeField]
+        [Tooltip("Camera used for mouse-to-world raycasts. If empty, the scene's active/main camera is used.")]
+        private Camera sourceCamera;
+
+        [SerializeField]
+        [Tooltip("Physics layers included when looking for GridTileView colliders.")]
+        private LayerMask raycastLayerMask = ~0;
+
+        [SerializeField]
+        [Min(0.01f)]
+        [Tooltip("Maximum world distance used for grid picking raycasts.")]
+        private float maxRaycastDistance = DefaultMaxRaycastDistance;
+
+        [SerializeField]
+        [Tooltip("Whether trigger colliders should be considered by grid picking raycasts.")]
+        private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
+
+        [SerializeField]
+        [Tooltip("When true, hovering or clicking over UI returns no grid pick result.")]
+        private bool ignorePointerOverUi = true;
+
+        [SerializeField]
+        [Tooltip("Write a concise debug log when a tile is clicked. Useful until the command router consumes click events.")]
+        private bool logClickedCells = true;
+
+        private static readonly Type EventSystemType = ResolveEventSystemType();
+        private static readonly PropertyInfo CurrentEventSystemProperty = EventSystemType != null
+            ? EventSystemType.GetProperty("current", BindingFlags.Public | BindingFlags.Static)
+            : null;
+        private static readonly MethodInfo IsPointerOverGameObjectMethod = EventSystemType != null
+            ? EventSystemType.GetMethod("IsPointerOverGameObject", Type.EmptyTypes)
+            : null;
+        private static readonly MethodInfo IsPointerOverGameObjectWithIdMethod = EventSystemType != null
+            ? EventSystemType.GetMethod("IsPointerOverGameObject", new[] { typeof(int) })
+            : null;
+
+        private readonly RaycastHit[] hitBuffer = new RaycastHit[MaxRaycastHits];
+
+        public event Action<GridPickResult> HoverCellChanged;
+
+        public event Action HoverCellCleared;
+
+        public event Action<GridPickResult> CellClicked;
+
+        public Camera SourceCamera
+        {
+            get { return sourceCamera; }
+            set { sourceCamera = value; }
+        }
+
+        public LayerMask RaycastLayerMask
+        {
+            get { return raycastLayerMask; }
+            set { raycastLayerMask = value; }
+        }
+
+        public float MaxRaycastDistance
+        {
+            get { return maxRaycastDistance; }
+            set { maxRaycastDistance = Mathf.Max(0.01f, value); }
+        }
+
+        public QueryTriggerInteraction TriggerInteraction
+        {
+            get { return triggerInteraction; }
+            set { triggerInteraction = value; }
+        }
+
+        public bool IgnorePointerOverUi
+        {
+            get { return ignorePointerOverUi; }
+            set { ignorePointerOverUi = value; }
+        }
+
+        public bool LogClickedCells
+        {
+            get { return logClickedCells; }
+            set { logClickedCells = value; }
+        }
+
+        public bool HasCurrentHoverCell { get; private set; }
+
+        public GridPosition CurrentHoverCell { get; private set; }
+
+        public GridTileView CurrentHoverTile { get; private set; }
+
+        public GridPickResult CurrentHoverResult { get; private set; }
+
+        public bool TryPickCurrentPointer(out GridPickResult result)
+        {
+            return TryPickScreenPosition(UnityEngine.Input.mousePosition, out result);
+        }
+
+        public bool TryPickScreenPosition(Vector2 screenPosition, out GridPickResult result)
+        {
+            if (IsPointerBlockedByUi())
+            {
+                result = default;
+                return false;
+            }
+
+            return TryPickScreenPositionIgnoringUi(screenPosition, out result);
+        }
+
+        public bool TryPickScreenPositionIgnoringUi(Vector2 screenPosition, out GridPickResult result)
+        {
+            result = default;
+
+            var resolvedCamera = ResolveCamera();
+            if (resolvedCamera == null)
+            {
+                return false;
+            }
+
+            var ray = resolvedCamera.ScreenPointToRay(screenPosition);
+            var hitCount = Physics.RaycastNonAlloc(
+                ray,
+                hitBuffer,
+                maxRaycastDistance,
+                raycastLayerMask,
+                triggerInteraction);
+
+            if (hitCount <= 0)
+            {
+                return false;
+            }
+
+            GridTileView nearestTile = null;
+            RaycastHit nearestHit = default;
+            var nearestDistance = float.PositiveInfinity;
+            for (var index = 0; index < hitCount; index++)
+            {
+                var hit = hitBuffer[index];
+                if (hit.collider == null || hit.distance >= nearestDistance)
+                {
+                    continue;
+                }
+
+                var tile = hit.collider.GetComponentInParent<GridTileView>();
+                if (tile == null)
+                {
+                    continue;
+                }
+
+                nearestTile = tile;
+                nearestHit = hit;
+                nearestDistance = hit.distance;
+            }
+
+            if (nearestTile == null)
+            {
+                return false;
+            }
+
+            result = new GridPickResult(nearestTile, nearestHit);
+            return true;
+        }
+
+        public bool UpdateHoverAtScreenPosition(Vector2 screenPosition)
+        {
+            if (TryPickScreenPosition(screenPosition, out var result))
+            {
+                SetCurrentHover(result);
+                return true;
+            }
+
+            ClearCurrentHover();
+            return false;
+        }
+
+        public bool TryClickScreenPosition(Vector2 screenPosition, out GridPickResult result)
+        {
+            if (!TryPickScreenPosition(screenPosition, out result))
+            {
+                return false;
+            }
+
+            CellClicked?.Invoke(result);
+            if (logClickedCells)
+            {
+                Debug.Log($"GridPicker clicked {result.Position}", result.Tile);
+            }
+
+            return true;
+        }
+
+        public void ClearCurrentHover()
+        {
+            if (!HasCurrentHoverCell)
+            {
+                return;
+            }
+
+            HasCurrentHoverCell = false;
+            CurrentHoverCell = GridPosition.Zero;
+            CurrentHoverTile = null;
+            CurrentHoverResult = default;
+            HoverCellCleared?.Invoke();
+        }
+
+        private void Update()
+        {
+            UpdateHoverAtScreenPosition(UnityEngine.Input.mousePosition);
+
+            if (UnityEngine.Input.GetMouseButtonDown(0))
+            {
+                TryClickScreenPosition(UnityEngine.Input.mousePosition, out _);
+            }
+        }
+
+        private void OnValidate()
+        {
+            maxRaycastDistance = Mathf.Max(0.01f, maxRaycastDistance);
+        }
+
+        private void SetCurrentHover(GridPickResult result)
+        {
+            var changed = !HasCurrentHoverCell
+                || CurrentHoverCell != result.Position
+                || CurrentHoverTile != result.Tile;
+
+            HasCurrentHoverCell = true;
+            CurrentHoverCell = result.Position;
+            CurrentHoverTile = result.Tile;
+            CurrentHoverResult = result;
+
+            if (changed)
+            {
+                HoverCellChanged?.Invoke(result);
+            }
+        }
+
+        private Camera ResolveCamera()
+        {
+            if (sourceCamera != null && sourceCamera.isActiveAndEnabled)
+            {
+                return sourceCamera;
+            }
+
+            var mainCamera = Camera.main;
+            if (mainCamera != null && mainCamera.isActiveAndEnabled)
+            {
+                return mainCamera;
+            }
+
+            return FindAnyObjectByType<Camera>();
+        }
+
+        private bool IsPointerBlockedByUi()
+        {
+            if (!ignorePointerOverUi)
+            {
+                return false;
+            }
+
+            var currentEventSystem = GetCurrentEventSystem();
+            if (currentEventSystem == null)
+            {
+                return false;
+            }
+
+            if (UnityEngine.Input.touchCount > 0)
+            {
+                for (var index = 0; index < UnityEngine.Input.touchCount; index++)
+                {
+                    var touch = UnityEngine.Input.GetTouch(index);
+                    if (IsPointerOverUi(currentEventSystem, touch.fingerId))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return IsPointerOverUi(currentEventSystem);
+        }
+
+        private static object GetCurrentEventSystem()
+        {
+            return CurrentEventSystemProperty != null ? CurrentEventSystemProperty.GetValue(null, null) : null;
+        }
+
+        private static bool IsPointerOverUi(object eventSystem)
+        {
+            return IsPointerOverGameObjectMethod != null
+                && IsPointerOverGameObjectMethod.Invoke(eventSystem, null) is bool isOverUi
+                && isOverUi;
+        }
+
+        private static bool IsPointerOverUi(object eventSystem, int pointerId)
+        {
+            return IsPointerOverGameObjectWithIdMethod != null
+                && IsPointerOverGameObjectWithIdMethod.Invoke(eventSystem, new object[] { pointerId }) is bool isOverUi
+                && isOverUi;
+        }
+
+        private static Type ResolveEventSystemType()
+        {
+            var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+            for (var index = 0; index < loadedAssemblies.Length; index++)
+            {
+                var eventSystemType = loadedAssemblies[index].GetType("UnityEngine.EventSystems.EventSystem");
+                if (eventSystemType != null)
+                {
+                    return eventSystemType;
+                }
+            }
+
+            return null;
+        }
+    }
+}
