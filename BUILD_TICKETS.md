@@ -3174,7 +3174,7 @@ unity-ctrl --project "$PWD" test --filter Reaction
 
 ## 108 — Add combat HUD shell
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add prototype combat hud shell`
 

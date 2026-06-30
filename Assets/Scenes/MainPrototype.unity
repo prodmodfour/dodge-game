@@ -792,8 +792,13 @@ MonoBehaviour:
   activeMarker: {fileID: 0}
   activeMarkerRenderer: {fileID: 0}
   activeColor: {r: 1, g: 0.88, b: 0.05, a: 1}
-  markerLocalPosition: {x: 0, y: 0.04, z: 0}
-  markerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  activeMarkerLocalPosition: {x: 0, y: 0.04, z: 0}
+  activeMarkerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  reactionMarker: {fileID: 0}
+  reactionMarkerRenderer: {fileID: 0}
+  reactionColor: {r: 0.1, g: 0.95, b: 1, a: 1}
+  reactionMarkerLocalPosition: {x: 0, y: 0.075, z: 0}
+  reactionMarkerLocalScale: {x: 0.82, y: 0.03, z: 0.82}
 --- !u!136 &792797862
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -853,6 +858,8 @@ MonoBehaviour:
   currentGridPosition: {x: 7, y: 0, z: 7}
   currentHP: 7
   currentAP: 6
+  bracedUntilNextHit: 0
+  braceDamageReduction: 0
   isAlive: 1
 --- !u!1 &849092056
 GameObject:
@@ -1046,6 +1053,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1047836511}
   - component: {fileID: 1047836512}
+  - component: {fileID: 1047836513}
   m_Layer: 0
   m_Name: UI
   m_TagString: Untagged
@@ -1097,6 +1105,28 @@ MonoBehaviour:
     width: 340
     height: 154
   panelTitle: Hover Debug
+--- !u!114 &1047836513
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047836510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcbcf2361b3f55a68a70c6795f184519, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.CombatHud
+  combatManager: {fileID: 1092979095}
+  visible: 1
+  showWhenCombatManagerMissing: 1
+  panelRect:
+    serializedVersion: 2
+    x: 12
+    y: 170
+    width: 360
+    height: 150
+  panelTitle: Combat HUD
 --- !u!1 &1092979089
 GameObject:
   m_ObjectHideFlags: 0
@@ -1186,6 +1216,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Input.PlayerCommandRouter
   selectionController: {fileID: 1092979094}
   gridPicker: {fileID: 1092979092}
+  combatManager: {fileID: 0}
   keyboardShortcutsEnabled: 1
   moveShortcut: 109
   meleeShortcut: 49
@@ -1226,6 +1257,7 @@ MonoBehaviour:
   eventBus: {fileID: 1092979096}
   startCombatOnStart: 1
   logCombatStart: 1
+  logActionFlow: 1
 --- !u!114 &1092979096
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1311,8 +1343,13 @@ MonoBehaviour:
   activeMarker: {fileID: 0}
   activeMarkerRenderer: {fileID: 0}
   activeColor: {r: 1, g: 0.88, b: 0.05, a: 1}
-  markerLocalPosition: {x: 0, y: 0.04, z: 0}
-  markerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  activeMarkerLocalPosition: {x: 0, y: 0.04, z: 0}
+  activeMarkerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  reactionMarker: {fileID: 0}
+  reactionMarkerRenderer: {fileID: 0}
+  reactionColor: {r: 0.1, g: 0.95, b: 1, a: 1}
+  reactionMarkerLocalPosition: {x: 0, y: 0.075, z: 0}
+  reactionMarkerLocalScale: {x: 0.82, y: 0.03, z: 0.82}
 --- !u!136 &1181229180
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -1372,6 +1409,8 @@ MonoBehaviour:
   currentGridPosition: {x: 1, y: 0, z: 0}
   currentHP: 11
   currentAP: 7
+  bracedUntilNextHit: 0
+  braceDamageReduction: 0
   isAlive: 1
 --- !u!1 &1293037496
 GameObject:
@@ -1787,8 +1826,13 @@ MonoBehaviour:
   activeMarker: {fileID: 0}
   activeMarkerRenderer: {fileID: 0}
   activeColor: {r: 1, g: 0.88, b: 0.05, a: 1}
-  markerLocalPosition: {x: 0, y: 0.04, z: 0}
-  markerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  activeMarkerLocalPosition: {x: 0, y: 0.04, z: 0}
+  activeMarkerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  reactionMarker: {fileID: 0}
+  reactionMarkerRenderer: {fileID: 0}
+  reactionColor: {r: 0.1, g: 0.95, b: 1, a: 1}
+  reactionMarkerLocalPosition: {x: 0, y: 0.075, z: 0}
+  reactionMarkerLocalScale: {x: 0.82, y: 0.03, z: 0.82}
 --- !u!136 &1894430880
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -1848,6 +1892,8 @@ MonoBehaviour:
   currentGridPosition: {x: 6, y: 0, z: 7}
   currentHP: 8
   currentAP: 6
+  bracedUntilNextHit: 0
+  braceDamageReduction: 0
   isAlive: 1
 --- !u!1 &2130964990
 GameObject:
@@ -1922,8 +1968,13 @@ MonoBehaviour:
   activeMarker: {fileID: 0}
   activeMarkerRenderer: {fileID: 0}
   activeColor: {r: 1, g: 0.88, b: 0.05, a: 1}
-  markerLocalPosition: {x: 0, y: 0.04, z: 0}
-  markerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  activeMarkerLocalPosition: {x: 0, y: 0.04, z: 0}
+  activeMarkerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  reactionMarker: {fileID: 0}
+  reactionMarkerRenderer: {fileID: 0}
+  reactionColor: {r: 0.1, g: 0.95, b: 1, a: 1}
+  reactionMarkerLocalPosition: {x: 0, y: 0.075, z: 0}
+  reactionMarkerLocalScale: {x: 0.82, y: 0.03, z: 0.82}
 --- !u!136 &2130964994
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -1983,6 +2034,8 @@ MonoBehaviour:
   currentGridPosition: {x: 0, y: 0, z: 0}
   currentHP: 16
   currentAP: 6
+  bracedUntilNextHit: 0
+  braceDamageReduction: 0
   isAlive: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
