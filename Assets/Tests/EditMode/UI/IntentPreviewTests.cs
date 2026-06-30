@@ -85,7 +85,7 @@ namespace ReactionTactics.Tests.EditMode.UI
         }
 
         [Test]
-        public void RadiusPreviewValidatesTargetButLeavesShapeCellsEmptyUntilShapeServiceExists()
+        public void RadiusPreviewReturnsAffectedCellsWithoutSpendingAP()
         {
             using (var battle = new TestBattle())
             {
@@ -115,7 +115,14 @@ namespace ReactionTactics.Tests.EditMode.UI
 
                     Assert.That(preview.IsValid, Is.True, preview.InvalidReason);
                     Assert.That(preview.Target.TargetCell, Is.EqualTo(targetCell));
-                    Assert.That(preview.AffectedCells, Is.Empty);
+                    Assert.That(preview.AffectedCells, Is.EqualTo(new[]
+                    {
+                        targetCell,
+                        new GridPosition(2, 0, 0),
+                        new GridPosition(1, 0, 1),
+                        new GridPosition(3, 0, 1),
+                        new GridPosition(2, 0, 2),
+                    }));
                     Assert.That(preview.ThreatenedUnits, Is.Empty);
                     Assert.That(battle.Actor.CurrentAP, Is.EqualTo(startingAP));
                 }

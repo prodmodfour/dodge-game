@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ReactionTactics.Actions;
 using ReactionTactics.Grid;
+using ReactionTactics.Targeting;
 using ReactionTactics.Turns;
 using ReactionTactics.Units;
 
@@ -97,10 +98,14 @@ namespace ReactionTactics.UI
                         ? new[] { context.Target.TargetCell }
                         : Array.Empty<GridPosition>();
                 case AbilityShape.Cone:
-                case AbilityShape.Radius:
-                    // Shape services are introduced in later tickets. Until then, previews
+                    // Cone shape service is introduced in a later ticket. Until then, previews
                     // can still validate targeting and report no affected cells.
                     return Array.Empty<GridPosition>();
+                case AbilityShape.Radius:
+                    return AreaShapeService.GetRadiusCells(
+                        context.Target.TargetCell,
+                        context.Ability.Radius,
+                        context.Map);
                 default:
                     return Array.Empty<GridPosition>();
             }

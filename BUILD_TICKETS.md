@@ -2513,7 +2513,7 @@ unity-ctrl --project "$PWD" test --filter RadiusShapeTests
 
 ## 085 — Implement AoE targeting validation
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: validate aoe ability targets`
 
