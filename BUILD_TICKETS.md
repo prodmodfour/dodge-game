@@ -2277,7 +2277,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 077 — Add intent preview model
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add action intent preview data`
 
