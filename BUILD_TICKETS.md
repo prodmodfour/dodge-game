@@ -4173,7 +4173,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 142 — Wire brace reaction to UI and command router
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: integrate brace reaction gameplay flow`
 
