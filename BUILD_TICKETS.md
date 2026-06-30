@@ -3897,7 +3897,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 133 — Replace manual unit setup with scenario setup
 
-Status: TODO
+Status: DONE
 
 **Commit:** `refactor: bootstrap units from scenario definition`
 
