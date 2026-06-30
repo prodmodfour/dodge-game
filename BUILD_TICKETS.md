@@ -4345,7 +4345,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 148 — Run full PlayMode suite and fix failures
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: fix playmode suite before prototype build`
 
