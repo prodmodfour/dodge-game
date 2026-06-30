@@ -168,6 +168,61 @@ namespace ReactionTactics.Tests.EditMode.Input
         }
 
         [Test]
+        public void KeyboardShortcutsRouteThroughPublicCommandMethods()
+        {
+            var selectionObject = new GameObject("Selection Controller");
+            var routerObject = new GameObject("Player Command Router");
+            var actorObject = new GameObject("Actor");
+            var stats = CreateStats("Knight");
+            var requests = new List<PlayerCommandRequest>();
+
+            try
+            {
+                var selection = selectionObject.AddComponent<SelectionController>();
+                var router = routerObject.AddComponent<PlayerCommandRouter>();
+                var actor = CreateUnit(actorObject, new UnitId(5), TeamId.Player, stats, GridPosition.Zero);
+                router.SelectionController = selection;
+                router.CommandRequested += requests.Add;
+
+                Assert.That(router.SelectUnit(actor).IsSuccess, Is.True);
+
+                Assert.That(router.RouteKeyboardShortcut(KeyCode.M).IsSuccess, Is.True);
+                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.SelectMove));
+                Assert.That(requests[requests.Count - 1].ActionMode, Is.EqualTo(SelectionActionMode.Move));
+
+                Assert.That(router.RouteKeyboardShortcut(KeyCode.Alpha1).IsSuccess, Is.True);
+                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.SelectAttack));
+                Assert.That(requests[requests.Count - 1].ActionMode, Is.EqualTo(SelectionActionMode.Melee));
+
+                Assert.That(router.RouteKeyboardShortcut(KeyCode.Alpha2).IsSuccess, Is.True);
+                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.SelectAttack));
+                Assert.That(requests[requests.Count - 1].ActionMode, Is.EqualTo(SelectionActionMode.Cone));
+
+                Assert.That(router.RouteKeyboardShortcut(KeyCode.Alpha3).IsSuccess, Is.True);
+                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.SelectAttack));
+                Assert.That(requests[requests.Count - 1].ActionMode, Is.EqualTo(SelectionActionMode.AreaOfEffect));
+
+                Assert.That(router.RouteKeyboardShortcut(KeyCode.B).IsSuccess, Is.True);
+                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.SelectReaction));
+                Assert.That(requests[requests.Count - 1].ActionMode, Is.EqualTo(SelectionActionMode.Brace));
+
+                Assert.That(router.RouteKeyboardShortcut(KeyCode.Space).IsSuccess, Is.True);
+                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.EndTurn));
+
+                Assert.That(router.RouteKeyboardShortcut(KeyCode.Escape).IsSuccess, Is.True);
+                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.Cancel));
+                Assert.That(selection.SelectedActionMode, Is.EqualTo(SelectionActionMode.None));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(actorObject);
+                UnityEngine.Object.DestroyImmediate(routerObject);
+                UnityEngine.Object.DestroyImmediate(selectionObject);
+                UnityEngine.Object.DestroyImmediate(stats);
+            }
+        }
+
+        [Test]
         public void MouseClicksRouteThroughPickerIntoCommands()
         {
             var fixture = CreatePickerFixture(new GridPosition(4, 0, 5));

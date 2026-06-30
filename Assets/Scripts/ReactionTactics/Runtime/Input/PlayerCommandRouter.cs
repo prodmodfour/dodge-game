@@ -7,7 +7,7 @@ using UnityEngine;
 namespace ReactionTactics.Input
 {
     /// <summary>
-    /// Centralizes player UI and mouse input as high-level command requests.
+    /// Centralizes player UI, keyboard, and mouse input as high-level command requests.
     /// The router updates selection state and emits request events, but it intentionally
     /// does not execute movement, attacks, turn advancement, or combat legality.
     /// </summary>
@@ -21,6 +21,38 @@ namespace ReactionTactics.Input
         [SerializeField]
         [Tooltip("Optional picker whose click events are routed into selection and target requests.")]
         private GridPicker gridPicker;
+
+        [SerializeField]
+        [Tooltip("Poll prototype keyboard shortcuts in Update and route them through the same methods as UI buttons.")]
+        private bool keyboardShortcutsEnabled = true;
+
+        [SerializeField]
+        [Tooltip("Shortcut for selecting active movement.")]
+        private KeyCode moveShortcut = KeyCode.M;
+
+        [SerializeField]
+        [Tooltip("Shortcut for selecting the melee attack.")]
+        private KeyCode meleeShortcut = KeyCode.Alpha1;
+
+        [SerializeField]
+        [Tooltip("Shortcut for selecting the cone attack.")]
+        private KeyCode coneShortcut = KeyCode.Alpha2;
+
+        [SerializeField]
+        [Tooltip("Shortcut for selecting the area-of-effect attack.")]
+        private KeyCode areaOfEffectShortcut = KeyCode.Alpha3;
+
+        [SerializeField]
+        [Tooltip("Shortcut for selecting Brace during a reaction turn.")]
+        private KeyCode braceShortcut = KeyCode.B;
+
+        [SerializeField]
+        [Tooltip("Shortcut for pass/end turn. Combat phase systems decide whether this passes or ends the active turn.")]
+        private KeyCode passOrEndTurnShortcut = KeyCode.Space;
+
+        [SerializeField]
+        [Tooltip("Shortcut for canceling current selection or targeting.")]
+        private KeyCode cancelShortcut = KeyCode.Escape;
 
         [SerializeField]
         [Tooltip("Write concise logs whenever a command request is routed or rejected.")]
@@ -67,6 +99,12 @@ namespace ReactionTactics.Input
         {
             get { return logRoutedCommands; }
             set { logRoutedCommands = value; }
+        }
+
+        public bool KeyboardShortcutsEnabled
+        {
+            get { return keyboardShortcutsEnabled; }
+            set { keyboardShortcutsEnabled = value; }
         }
 
         public TacticalResult SelectUnit(TacticalUnit unit)
@@ -136,6 +174,22 @@ namespace ReactionTactics.Input
         public TacticalResult SelectAreaOfEffectAttack()
         {
             return SelectAttack(SelectionActionMode.AreaOfEffect);
+        }
+
+        public TacticalResult SelectBraceReaction()
+        {
+            if (!TryGetControllerWithSelectedUnit(out var controller, out var failure))
+            {
+                return Reject(failure);
+            }
+
+            var result = controller.SetActionMode(SelectionActionMode.Brace);
+            if (result.IsFailure)
+            {
+                return Reject(result);
+            }
+
+            return Route(PlayerCommandType.SelectReaction, controller.CurrentState);
         }
 
         public TacticalResult ConfirmTargetCell(GridPosition cell)
@@ -234,6 +288,56 @@ namespace ReactionTactics.Input
             return Route(PlayerCommandType.EndTurn, controller != null ? controller.CurrentState : SelectionState.Empty);
         }
 
+        public TacticalResult RequestPassOrEndTurn()
+        {
+            return RequestEndTurn();
+        }
+
+        public TacticalResult RouteKeyboardShortcut(KeyCode keyCode)
+        {
+            if (keyCode == KeyCode.None)
+            {
+                return Reject("Cannot route an unassigned keyboard shortcut.");
+            }
+
+            if (keyCode == moveShortcut)
+            {
+                return SelectMove();
+            }
+
+            if (keyCode == meleeShortcut)
+            {
+                return SelectMeleeAttack();
+            }
+
+            if (keyCode == coneShortcut)
+            {
+                return SelectConeAttack();
+            }
+
+            if (keyCode == areaOfEffectShortcut)
+            {
+                return SelectAreaOfEffectAttack();
+            }
+
+            if (keyCode == braceShortcut)
+            {
+                return SelectBraceReaction();
+            }
+
+            if (keyCode == passOrEndTurnShortcut)
+            {
+                return RequestPassOrEndTurn();
+            }
+
+            if (keyCode == cancelShortcut)
+            {
+                return Cancel();
+            }
+
+            return Reject($"No player command shortcut is bound to '{keyCode}'.");
+        }
+
         private void OnEnable()
         {
             ResolveSelectionController();
@@ -246,10 +350,37 @@ namespace ReactionTactics.Input
             UnsubscribeFromPicker();
         }
 
+        private void Update()
+        {
+            if (!keyboardShortcutsEnabled)
+            {
+                return;
+            }
+
+            if (TryRoutePressedShortcut(cancelShortcut)
+                || TryRoutePressedShortcut(moveShortcut)
+                || TryRoutePressedShortcut(meleeShortcut)
+                || TryRoutePressedShortcut(coneShortcut)
+                || TryRoutePressedShortcut(areaOfEffectShortcut)
+                || TryRoutePressedShortcut(braceShortcut)
+                || TryRoutePressedShortcut(passOrEndTurnShortcut))
+            {
+                return;
+            }
+        }
+
         private void Reset()
         {
             selectionController = FindAnyObjectByType<SelectionController>();
             gridPicker = FindAnyObjectByType<GridPicker>();
+            keyboardShortcutsEnabled = true;
+            moveShortcut = KeyCode.M;
+            meleeShortcut = KeyCode.Alpha1;
+            coneShortcut = KeyCode.Alpha2;
+            areaOfEffectShortcut = KeyCode.Alpha3;
+            braceShortcut = KeyCode.B;
+            passOrEndTurnShortcut = KeyCode.Space;
+            cancelShortcut = KeyCode.Escape;
             logRoutedCommands = false;
         }
 
@@ -262,9 +393,7 @@ namespace ReactionTactics.Input
             }
 
             var controller = ResolveSelectionController();
-            if (controller != null
-                && controller.SelectedActionMode != SelectionActionMode.None
-                && controller.SelectedActionMode != SelectionActionMode.Move)
+            if (controller != null && IsAttackMode(controller.SelectedActionMode))
             {
                 ConfirmTargetUnit(result.Unit);
                 return;
@@ -364,6 +493,17 @@ namespace ReactionTactics.Input
             }
 
             return gridPicker;
+        }
+
+        private bool TryRoutePressedShortcut(KeyCode shortcut)
+        {
+            if (shortcut == KeyCode.None || !UnityEngine.Input.GetKeyDown(shortcut))
+            {
+                return false;
+            }
+
+            RouteKeyboardShortcut(shortcut);
+            return true;
         }
 
         private void SubscribeToPicker()

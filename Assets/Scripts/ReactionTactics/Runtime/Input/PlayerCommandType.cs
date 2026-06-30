@@ -1,7 +1,7 @@
 namespace ReactionTactics.Input
 {
     /// <summary>
-    /// High-level player command requests routed from UI and mouse input.
+    /// High-level player command requests routed from UI, keyboard, and mouse input.
     /// Command execution and combat legality are handled by later gameplay systems.
     /// </summary>
     public enum PlayerCommandType
@@ -11,6 +11,7 @@ namespace ReactionTactics.Input
         SelectAttack = 2,
         ConfirmTarget = 3,
         Cancel = 4,
-        EndTurn = 5
+        EndTurn = 5,
+        SelectReaction = 6
     }
 }

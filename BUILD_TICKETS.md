@@ -1658,7 +1658,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 056 — Add keyboard shortcuts
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add prototype keyboard shortcuts`
 
