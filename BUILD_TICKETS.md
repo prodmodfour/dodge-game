@@ -1982,7 +1982,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 067 — Add turn system tests
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: cover active turns and round lifecycle`
 
