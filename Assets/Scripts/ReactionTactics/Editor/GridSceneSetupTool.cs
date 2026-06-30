@@ -18,6 +18,7 @@ namespace ReactionTactics.Editor
         private const string DefaultMapPath = "Assets/ScriptableObjects/DefaultPrototypeMap.asset";
         private const string WalkableMaterialPath = "Assets/Materials/PrototypeGridWalkable.mat";
         private const string BlockedMaterialPath = "Assets/Materials/PrototypeGridBlocked.mat";
+        private const string LineOfSightBlockerMaterialPath = "Assets/Materials/PrototypeGridLineOfSightBlocker.mat";
         private const string HighlightMaterialPath = "Assets/Materials/PrototypeGridHighlight.mat";
         private const string DangerMaterialPath = "Assets/Materials/PrototypeGridDanger.mat";
         private const string SafeMaterialPath = "Assets/Materials/PrototypeGridSafe.mat";
@@ -43,6 +44,7 @@ namespace ReactionTactics.Editor
                 var mapDefinition = LoadRequiredAsset<GridMapDefinition>(DefaultMapPath, "default prototype map");
                 var walkableMaterial = LoadRequiredAsset<Material>(WalkableMaterialPath, "walkable grid material");
                 var blockedMaterial = LoadRequiredAsset<Material>(BlockedMaterialPath, "blocked grid material");
+                var lineOfSightBlockerMaterial = LoadRequiredAsset<Material>(LineOfSightBlockerMaterialPath, "line-of-sight blocker grid material");
                 var highlightMaterial = LoadRequiredAsset<Material>(HighlightMaterialPath, "highlight grid material");
                 var dangerMaterial = LoadRequiredAsset<Material>(DangerMaterialPath, "danger grid material");
                 var safeMaterial = LoadRequiredAsset<Material>(SafeMaterialPath, "safe grid material");
@@ -64,6 +66,7 @@ namespace ReactionTactics.Editor
                     gridRoot.transform,
                     walkableMaterial,
                     blockedMaterial,
+                    lineOfSightBlockerMaterial,
                     highlightMaterial,
                     dangerMaterial,
                     safeMaterial);
@@ -104,6 +107,7 @@ namespace ReactionTactics.Editor
                     {
                         walkable = WalkableMaterialPath,
                         blocked = BlockedMaterialPath,
+                        lineOfSightBlocker = LineOfSightBlockerMaterialPath,
                         highlight = HighlightMaterialPath,
                         danger = DangerMaterialPath,
                         safe = SafeMaterialPath
@@ -196,6 +200,7 @@ namespace ReactionTactics.Editor
             Transform tileParent,
             Material walkableMaterial,
             Material blockedMaterial,
+            Material lineOfSightBlockerMaterial,
             Material highlightMaterial,
             Material dangerMaterial,
             Material safeMaterial)
@@ -208,6 +213,7 @@ namespace ReactionTactics.Editor
             SetBool(serializedObject, "clearExistingTiles", true);
             SetObjectReference(serializedObject, "walkableMaterial", walkableMaterial);
             SetObjectReference(serializedObject, "blockedMaterial", blockedMaterial);
+            SetObjectReference(serializedObject, "lineOfSightBlockerMaterial", lineOfSightBlockerMaterial);
             SetObjectReference(serializedObject, "highlightMaterial", highlightMaterial);
             SetObjectReference(serializedObject, "dangerMaterial", dangerMaterial);
             SetObjectReference(serializedObject, "safeMaterial", safeMaterial);

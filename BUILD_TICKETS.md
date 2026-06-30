@@ -909,7 +909,7 @@ unity-ctrl --project "$PWD" test --filter MovementCostServiceTests
 
 ## 030 — Add grid blocker and line-of-sight flags to visuals
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: visualize terrain blocker flags`
 

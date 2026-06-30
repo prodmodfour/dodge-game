@@ -32,8 +32,12 @@ namespace ReactionTactics.Grid
         private Material walkableMaterial;
 
         [SerializeField]
-        [Tooltip("Authored material for blocked or unwalkable terrain cells. A generated fallback color is used when this is empty.")]
+        [Tooltip("Authored material for blocked or unwalkable terrain cells that do not block line of sight. A generated fallback color is used when this is empty.")]
         private Material blockedMaterial;
+
+        [SerializeField]
+        [Tooltip("Authored material for terrain cells that block line of sight. This takes visual priority over the general blocked material.")]
+        private Material lineOfSightBlockerMaterial;
 
         [SerializeField]
         [Tooltip("Default material applied to tile views while they are highlighted for movement, targeting, or debug feedback.")]
@@ -55,9 +59,14 @@ namespace ReactionTactics.Grid
         [Tooltip("Fallback color used for generated blocked or unwalkable tile materials when no authored blocked material is assigned.")]
         private Color blockedColor = new Color(0.33f, 0.28f, 0.25f, 1f);
 
+        [SerializeField]
+        [Tooltip("Fallback color used for generated line-of-sight blocker tile materials when no authored sight blocker material is assigned.")]
+        private Color lineOfSightBlockerColor = new Color(0.46f, 0.22f, 0.68f, 1f);
+
         private readonly List<GridTileView> generatedTiles = new List<GridTileView>();
         private Material generatedWalkableMaterial;
         private Material generatedBlockedMaterial;
+        private Material generatedLineOfSightBlockerMaterial;
 
         public GridManager GridManager
         {
@@ -82,6 +91,11 @@ namespace ReactionTactics.Grid
         public Material BlockedMaterial
         {
             get { return blockedMaterial; }
+        }
+
+        public Material LineOfSightBlockerMaterial
+        {
+            get { return lineOfSightBlockerMaterial; }
         }
 
         public Material HighlightMaterial
@@ -199,6 +213,7 @@ namespace ReactionTactics.Grid
         {
             DestroyOwnedMaterial(ref generatedWalkableMaterial);
             DestroyOwnedMaterial(ref generatedBlockedMaterial);
+            DestroyOwnedMaterial(ref generatedLineOfSightBlockerMaterial);
         }
 
         private GridManager ResolveGridManager()
@@ -234,6 +249,13 @@ namespace ReactionTactics.Grid
 
         private Material GetMaterialForCell(GridCell cell)
         {
+            if (cell.BlocksLineOfSight)
+            {
+                return lineOfSightBlockerMaterial != null
+                    ? lineOfSightBlockerMaterial
+                    : GetOrCreateLineOfSightBlockerMaterial();
+            }
+
             if (IsBlockedOrUnwalkable(cell))
             {
                 return blockedMaterial != null ? blockedMaterial : GetOrCreateBlockedMaterial();
@@ -265,6 +287,16 @@ namespace ReactionTactics.Grid
             }
 
             return generatedBlockedMaterial;
+        }
+
+        private Material GetOrCreateLineOfSightBlockerMaterial()
+        {
+            if (generatedLineOfSightBlockerMaterial == null)
+            {
+                generatedLineOfSightBlockerMaterial = CreateRuntimeMaterial("Generated Line Of Sight Blocker Grid Tile", lineOfSightBlockerColor);
+            }
+
+            return generatedLineOfSightBlockerMaterial;
         }
 
         private static Material CreateRuntimeMaterial(string materialName, Color color)

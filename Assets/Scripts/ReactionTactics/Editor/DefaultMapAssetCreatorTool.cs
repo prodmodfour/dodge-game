@@ -206,6 +206,20 @@ namespace ReactionTactics.Editor
                 return false;
             }
 
+            var lineOfSightBlockerCount = cells.Count(cell => cell.BlocksLineOfSight);
+            if (lineOfSightBlockerCount < 2 || lineOfSightBlockerCount > 3)
+            {
+                error = "Default map must contain two or three line-of-sight blockers for prototype readability.";
+                return false;
+            }
+
+            var movementOnlyBlockerCount = cells.Count(cell => (!cell.Walkable || cell.BlocksMovement) && !cell.BlocksLineOfSight);
+            if (movementOnlyBlockerCount < 1)
+            {
+                error = "Default map must contain at least one movement blocker that does not block line of sight.";
+                return false;
+            }
+
             foreach (var startCell in ReservedStartCells)
             {
                 if (!TryFindCellAtHorizontal(map, startCell.X, startCell.Z, out var cell))

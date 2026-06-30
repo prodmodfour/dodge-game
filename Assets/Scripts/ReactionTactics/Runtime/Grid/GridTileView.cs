@@ -25,6 +25,18 @@ namespace ReactionTactics.Grid
         private int gridZ;
 
         [SerializeField]
+        [Tooltip("Whether this tile can be entered by units.")]
+        private bool walkable = true;
+
+        [SerializeField]
+        [Tooltip("Whether this tile blocks movement regardless of walkability.")]
+        private bool blocksMovement;
+
+        [SerializeField]
+        [Tooltip("Whether this tile blocks line-of-sight checks for ranged actions.")]
+        private bool blocksLineOfSight;
+
+        [SerializeField]
         [Tooltip("Material used when the tile is not highlighted.")]
         private Material baseMaterial;
 
@@ -47,6 +59,21 @@ namespace ReactionTactics.Grid
         public GridPosition GridPosition
         {
             get { return new GridPosition(gridX, gridY, gridZ); }
+        }
+
+        public bool Walkable
+        {
+            get { return walkable; }
+        }
+
+        public bool BlocksMovement
+        {
+            get { return blocksMovement; }
+        }
+
+        public bool BlocksLineOfSight
+        {
+            get { return blocksLineOfSight; }
         }
 
         public Material BaseMaterial
@@ -76,9 +103,8 @@ namespace ReactionTactics.Grid
 
         public void Initialize(GridCell cell, GridMetrics metrics, Material material)
         {
-            SetGridPosition(cell.Position);
+            ApplyCellData(cell, metrics);
             SetBaseMaterial(material, applyImmediately: false);
-            SetHeightScale(cell, metrics);
             CacheSceneReferences();
             ApplyMaterialState();
         }
@@ -86,6 +112,7 @@ namespace ReactionTactics.Grid
         public void ApplyCellData(GridCell cell, GridMetrics metrics)
         {
             SetGridPosition(cell.Position);
+            SetTerrainFlags(cell);
             SetHeightScale(cell, metrics);
         }
 
@@ -94,6 +121,13 @@ namespace ReactionTactics.Grid
             gridX = position.X;
             gridY = position.Y;
             gridZ = position.Z;
+        }
+
+        public void SetTerrainFlags(GridCell cell)
+        {
+            walkable = cell.Walkable;
+            blocksMovement = cell.BlocksMovement;
+            blocksLineOfSight = cell.BlocksLineOfSight;
         }
 
         public void SetBaseMaterial(Material material)
