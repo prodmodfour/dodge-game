@@ -3351,7 +3351,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 114 — Show action danger previews
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: show danger cells for selected actions`
 

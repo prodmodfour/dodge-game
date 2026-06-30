@@ -56,6 +56,7 @@ namespace ReactionTactics.Editor
                 var reactionMenuCreated = false;
                 var gridHighlightManagerCreated = false;
                 var activeMovementPreviewCreated = false;
+                var actionDangerPreviewCreated = false;
 
                 var systemsRoot = EnsureRootObject(scene, SystemsRootName, ref systemsRootCreated);
                 var gridRoot = EnsureRootObject(scene, GridRootName, ref gridRootCreated);
@@ -75,6 +76,7 @@ namespace ReactionTactics.Editor
                 var gridHighlightHost = terrainView != null ? terrainView.gameObject : gridRoot;
                 var gridHighlightManager = EnsureSceneComponent<GridHighlightManager>(scene, gridHighlightHost, ref gridHighlightManagerCreated);
                 var activeMovementPreview = EnsureSceneComponent<ActiveMovementPreviewController>(scene, uiRoot, ref activeMovementPreviewCreated);
+                var actionDangerPreview = EnsureSceneComponent<ActionDangerPreviewController>(scene, uiRoot, ref actionDangerPreviewCreated);
 
                 ConfigureCameraController(cameraController, gridManager);
                 ConfigureGridPicker(gridPicker, camera);
@@ -85,6 +87,7 @@ namespace ReactionTactics.Editor
                 ConfigureReactionMenu(reactionMenu, commandRouter, combatManager);
                 ConfigureGridHighlightManager(gridHighlightManager, terrainView);
                 ConfigureActiveMovementPreview(activeMovementPreview, selectionController, combatManager, gridManager, unitRegistry, gridHighlightManager);
+                ConfigureActionDangerPreview(actionDangerPreview, selectionController, gridPicker, combatManager, gridManager, unitRegistry, gridHighlightManager);
 
                 if (gridManager != null && gridManager.RebuildMap())
                 {
@@ -137,6 +140,8 @@ namespace ReactionTactics.Editor
                     gridHighlightManagerCreated,
                     activeMovementPreview = GetScenePath(activeMovementPreview.gameObject),
                     activeMovementPreviewCreated,
+                    actionDangerPreview = GetScenePath(actionDangerPreview.gameObject),
+                    actionDangerPreviewCreated,
                     references = new
                     {
                         gridManager = gridManager != null ? GetScenePath(gridManager.gameObject) : null,
@@ -405,6 +410,28 @@ namespace ReactionTactics.Editor
             SetBool(serializedObject, "visible", true);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(activeMovementPreview);
+        }
+
+        private static void ConfigureActionDangerPreview(
+            ActionDangerPreviewController actionDangerPreview,
+            SelectionController selectionController,
+            GridPicker gridPicker,
+            CombatManager combatManager,
+            GridManager gridManager,
+            UnitRegistry unitRegistry,
+            GridHighlightManager gridHighlightManager)
+        {
+            var serializedObject = new SerializedObject(actionDangerPreview);
+            serializedObject.Update();
+            SetObjectReference(serializedObject, "selectionController", selectionController);
+            SetObjectReference(serializedObject, "gridPicker", gridPicker);
+            SetObjectReference(serializedObject, "combatManager", combatManager);
+            SetObjectReference(serializedObject, "gridManager", gridManager);
+            SetObjectReference(serializedObject, "unitRegistry", unitRegistry);
+            SetObjectReference(serializedObject, "highlightManager", gridHighlightManager);
+            SetBool(serializedObject, "visible", true);
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(actionDangerPreview);
         }
 
         private static void SetObjectReference(SerializedObject serializedObject, string propertyName, UnityEngine.Object value)
