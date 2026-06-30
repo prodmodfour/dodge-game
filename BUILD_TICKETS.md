@@ -823,7 +823,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 027 — Add terrain CLI scene setup tool
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add grid terrain scene setup tool`
 

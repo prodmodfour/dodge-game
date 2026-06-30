@@ -251,6 +251,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 914327698}
+  - component: {fileID: 914327699}
   m_Layer: 0
   m_Name: Grid
   m_TagString: Untagged
@@ -273,6 +274,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &914327699
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 914327697}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0699225d3e49ae91abd42ad4824af057, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Grid.GridTerrainView
+  gridManager: {fileID: 1092979091}
+  tileParent: {fileID: 914327698}
+  generateOnStart: 1
+  clearExistingTiles: 1
+  walkableMaterial: {fileID: 2100000, guid: 8da62da363a8262ba81aa7c6191ffe67, type: 2}
+  blockedMaterial: {fileID: 2100000, guid: 7ea7df9148c22164c98a65b12fac3da1, type: 2}
+  highlightMaterial: {fileID: 2100000, guid: 1fc9fec14325cd1a590547dccc3d7213, type: 2}
+  dangerMaterial: {fileID: 2100000, guid: 3f525736126dc1593bd7fd8fd41e9199, type: 2}
+  safeMaterial: {fileID: 2100000, guid: e55da8645cb3b8482907d51f85bd1d06, type: 2}
+  walkableColor: {r: 0.38, g: 0.62, b: 0.36, a: 1}
+  blockedColor: {r: 0.33, g: 0.28, b: 0.25, a: 1}
 --- !u!1 &1047836510
 GameObject:
   m_ObjectHideFlags: 0
@@ -313,6 +337,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1092979090}
+  - component: {fileID: 1092979091}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -335,6 +360,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1092979091
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1092979089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92f7d17859a308baaee889efa01e37c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Grid.GridManager
+  mapDefinition: {fileID: 11400000, guid: 03ec9753642e65ae1ae636b135833aac, type: 2}
+  gridMetrics:
+    cellSize: 1
+    heightStep: 1
+    origin: {x: 0, y: 0, z: 0}
 --- !u!1 &1494555725
 GameObject:
   m_ObjectHideFlags: 0
