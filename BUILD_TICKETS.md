@@ -1836,7 +1836,7 @@ unity-ctrl --project "$PWD" test --filter TurnOrderServiceTests
 
 ## 062 — Add round start AP refresh
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: refresh action points at round start`
 
