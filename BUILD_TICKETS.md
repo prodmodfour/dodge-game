@@ -1390,7 +1390,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 047 — Add unit spawner service
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add tactical unit spawner`
 
