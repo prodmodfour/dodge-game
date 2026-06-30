@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b4863e2f8a25e33aace24bb79079d2f, type: 3}
+  m_Name: Knight
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Units.UnitStatsDefinition
+  displayName: Knight
+  maxHP: 16
+  maxAP: 6
+  movementAnimationSpeed: 3.75
+  meleeRange: 1
+  teamColorHint: {r: 0.28, g: 0.43, b: 0.95, a: 1}
+  teamMaterialHint: {fileID: 0}

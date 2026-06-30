@@ -1419,7 +1419,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 048 — Add editor CLI tool to create unit stat assets
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add default unit stat asset creator`
 
