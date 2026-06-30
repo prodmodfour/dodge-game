@@ -3590,7 +3590,7 @@ unity-ctrl --project "$PWD" test --filter AiTargetSelectionTests
 
 ## 122 — Implement AI active movement toward target
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: move ai units toward nearest target`
 

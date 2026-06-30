@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using ReactionTactics.Actions;
 using ReactionTactics.Core;
+using ReactionTactics.Grid;
+using ReactionTactics.Pathfinding;
 using ReactionTactics.Turns;
 using ReactionTactics.Units;
 using UnityEngine;
@@ -10,13 +12,15 @@ namespace ReactionTactics.AI
 {
     /// <summary>
     /// Deterministic shell controller for prototype enemy units. It exposes stable
-    /// target selection for later action choices while current active/reaction turn
-    /// behavior still passes until movement and attack AI tickets are implemented.
+    /// target selection for later action choices, advances active units toward targets
+    /// when no attack currently validates, and still passes reaction turns until
+    /// reaction-specific AI tickets are implemented.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class AiController : MonoBehaviour
     {
         public const int DefaultTargetSelectionVerticalWeight = 1;
+        public const int DefaultReactionApReserve = 2;
 
         [SerializeField]
         [Tooltip("Team controlled by this deterministic prototype AI controller.")]
@@ -31,13 +35,18 @@ namespace ReactionTactics.AI
         private CombatManager combatManager;
 
         [SerializeField]
-        [Tooltip("Write concise debug logs for AI pass decisions.")]
+        [Tooltip("Write concise debug logs for AI movement and pass decisions.")]
         private bool logDecisions = true;
 
         [SerializeField]
         [Min(0)]
         [Tooltip("Vertical grid weight used when choosing the nearest hostile target.")]
         private int targetSelectionVerticalWeight = DefaultTargetSelectionVerticalWeight;
+
+        [SerializeField]
+        [Min(0)]
+        [Tooltip("AP the AI tries to keep after active movement so it can still react later in the round.")]
+        private int reactionApReserve = DefaultReactionApReserve;
 
         public TeamId ControlledTeam
         {
@@ -77,6 +86,23 @@ namespace ReactionTactics.AI
                 }
 
                 targetSelectionVerticalWeight = value;
+            }
+        }
+
+        public int ReactionApReserve
+        {
+            get { return reactionApReserve; }
+            set
+            {
+                if (value < 0)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(value),
+                        value,
+                        "AI reaction AP reserve cannot be negative.");
+                }
+
+                reactionApReserve = value;
             }
         }
 
@@ -183,8 +209,171 @@ namespace ReactionTactics.AI
                 targetSelectionVerticalWeight);
         }
 
+        public int GetConservativeMovementBudget(TacticalUnit actor)
+        {
+            if (actor == null)
+            {
+                throw new ArgumentNullException(nameof(actor));
+            }
+
+            if (!actor.IsAlive)
+            {
+                return 0;
+            }
+
+            return Math.Max(0, actor.CurrentAP - reactionApReserve);
+        }
+
         /// <summary>
-        /// Initial active-turn AI behavior: pass by ending the controlled unit's turn.
+        /// Chooses the reachable destination that gets the actor closest to the target
+        /// while preserving the configured reaction AP reserve. The actor's current
+        /// cell is never returned; failure means the AI should pass or wait for a
+        /// future attack behavior instead of moving away from the target.
+        /// </summary>
+        public TacticalResult<GridPosition> TryChooseActiveMoveDestination(
+            TacticalUnit actor,
+            TacticalUnit target,
+            IGridMap map,
+            IGridOccupancy occupancy)
+        {
+            var movementContextResult = ValidateMovementChoiceContext(actor, target, map);
+            if (movementContextResult.IsFailure)
+            {
+                return TacticalResult<GridPosition>.Failure(movementContextResult.ErrorMessage);
+            }
+
+            var movementBudget = GetConservativeMovementBudget(actor);
+            if (movementBudget <= 0)
+            {
+                return TacticalResult<GridPosition>.Failure(
+                    $"{DescribeUnit(actor)} has no conservative active-move budget after reserving {reactionApReserve} AP for reactions.");
+            }
+
+            IReadOnlyDictionary<GridPosition, ReachableCell> reachableCells;
+            try
+            {
+                var search = new ReachableCellSearch();
+                reachableCells = search.FindReachableCells(
+                    map,
+                    actor.CurrentGridPosition,
+                    movementBudget,
+                    occupancy);
+            }
+            catch (ArgumentException exception)
+            {
+                return TacticalResult<GridPosition>.Failure(
+                    $"{DescribeUnit(actor)} cannot evaluate active movement: {exception.Message}");
+            }
+            catch (InvalidOperationException exception)
+            {
+                return TacticalResult<GridPosition>.Failure(
+                    $"{DescribeUnit(actor)} cannot evaluate active movement: {exception.Message}");
+            }
+
+            var currentDistance = actor.CurrentGridPosition.TacticalDistanceTo(
+                target.CurrentGridPosition,
+                targetSelectionVerticalWeight);
+            var hasBestCell = false;
+            var bestCell = default(ReachableCell);
+            var bestDistance = int.MaxValue;
+
+            foreach (var reachableCell in reachableCells.Values)
+            {
+                if (reachableCell.Position == actor.CurrentGridPosition)
+                {
+                    continue;
+                }
+
+                var distance = reachableCell.Position.TacticalDistanceTo(
+                    target.CurrentGridPosition,
+                    targetSelectionVerticalWeight);
+                if (distance >= currentDistance)
+                {
+                    continue;
+                }
+
+                if (!hasBestCell || CompareMoveDestination(reachableCell, distance, bestCell, bestDistance) < 0)
+                {
+                    hasBestCell = true;
+                    bestCell = reachableCell;
+                    bestDistance = distance;
+                }
+            }
+
+            if (!hasBestCell)
+            {
+                return TacticalResult<GridPosition>.Failure(
+                    $"No reachable cell within {movementBudget} AP moves {DescribeUnit(actor)} closer to {DescribeUnit(target)} while preserving {reactionApReserve} AP.");
+            }
+
+            return TacticalResult<GridPosition>.Success(bestCell.Position);
+        }
+
+        public bool HasValidActiveAttackAvailable(
+            TacticalUnit actor,
+            TacticalUnit target,
+            IGridMap map,
+            CombatState combatState)
+        {
+            if (actor == null)
+            {
+                throw new ArgumentNullException(nameof(actor));
+            }
+
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            if (map == null)
+            {
+                throw new ArgumentNullException(nameof(map));
+            }
+
+            if (combatState == null)
+            {
+                throw new ArgumentNullException(nameof(combatState));
+            }
+
+            if (!IsSelectableHostileTarget(actor, target))
+            {
+                return false;
+            }
+
+            var loadout = actor.GetComponent<UnitAbilityLoadout>();
+            if (loadout == null)
+            {
+                return false;
+            }
+
+            var actionAbilities = loadout.GetActionAbilities();
+            for (var i = 0; i < actionAbilities.Count; i += 1)
+            {
+                var ability = actionAbilities[i];
+                if (!IsAttackAbility(ability) || !TryCreateAttackTarget(actor, target, ability, out var actionTarget))
+                {
+                    continue;
+                }
+
+                var context = new AbilityTargetValidationContext(
+                    actor,
+                    ability,
+                    actionTarget,
+                    AbilityUsage.Action,
+                    combatState,
+                    map);
+                if (AbilityTargetValidator.Instance.ValidateTarget(context).IsSuccess)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Active-turn AI behavior: if no attack currently validates, advance toward
+        /// the nearest hostile with conservative movement, then end the active turn.
         /// </summary>
         public TacticalResult TakeActiveTurn()
         {
@@ -192,7 +381,8 @@ namespace ReactionTactics.AI
         }
 
         /// <summary>
-        /// Initial active-turn AI behavior: pass by ending the controlled unit's turn.
+        /// Active-turn AI behavior: if no attack currently validates, advance toward
+        /// the nearest hostile with conservative movement, then end the active turn.
         /// </summary>
         public TacticalResult TakeActiveTurn(CombatManager manager)
         {
@@ -203,7 +393,21 @@ namespace ReactionTactics.AI
             }
 
             var activeUnit = manager.CurrentState.ActiveUnit;
-            LogDecision($"AI controlling {activeUnit.DisplayName} {activeUnit.UnitId} [{activeUnit.Team}] passed its active turn.");
+            var movementResult = TryMoveTowardNearestTarget(manager, activeUnit);
+            if (movementResult.IsFailure)
+            {
+                return TacticalResult.Failure(movementResult.ErrorMessage);
+            }
+
+            if (movementResult.Value)
+            {
+                LogDecision($"AI controlling {activeUnit.DisplayName} {activeUnit.UnitId} [{activeUnit.Team}] ended its active turn after moving toward a target.");
+            }
+            else
+            {
+                LogDecision($"AI controlling {activeUnit.DisplayName} {activeUnit.UnitId} [{activeUnit.Team}] passed its active turn.");
+            }
+
             return manager.EndActiveTurn();
         }
 
@@ -244,12 +448,14 @@ namespace ReactionTactics.AI
             automaticDelegationEnabled = true;
             logDecisions = true;
             targetSelectionVerticalWeight = DefaultTargetSelectionVerticalWeight;
+            reactionApReserve = DefaultReactionApReserve;
             ResolveCombatManager();
         }
 
         private void OnValidate()
         {
             targetSelectionVerticalWeight = Math.Max(0, targetSelectionVerticalWeight);
+            reactionApReserve = Math.Max(0, reactionApReserve);
         }
 
         private CombatManager ResolveCombatManager()
@@ -260,6 +466,87 @@ namespace ReactionTactics.AI
             }
 
             return combatManager;
+        }
+
+        private TacticalResult<bool> TryMoveTowardNearestTarget(CombatManager manager, TacticalUnit activeUnit)
+        {
+            if (manager.UnitRegistry == null)
+            {
+                LogDecision($"AI could not evaluate active movement for {DescribeUnit(activeUnit)} because no unit registry is assigned.");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var livingUnits = manager.UnitRegistry.GetLivingUnits();
+            if (!TrySelectNearestHostileTarget(activeUnit, livingUnits, out var target))
+            {
+                LogDecision($"AI found no living hostile target for {DescribeUnit(activeUnit)}.");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var mapResult = ResolveCurrentMap(manager);
+            if (mapResult.IsFailure)
+            {
+                LogDecision($"AI could not evaluate active movement for {DescribeUnit(activeUnit)}: {mapResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            if (HasValidActiveAttackAvailable(activeUnit, target, mapResult.Value, manager.CurrentState))
+            {
+                LogDecision($"AI kept {DescribeUnit(activeUnit)} at {activeUnit.CurrentGridPosition} because a valid attack is already available against {DescribeUnit(target)}.");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var destinationResult = TryChooseActiveMoveDestination(
+                activeUnit,
+                target,
+                mapResult.Value,
+                manager.UnitRegistry);
+            if (destinationResult.IsFailure)
+            {
+                LogDecision($"AI found no active move for {DescribeUnit(activeUnit)} toward {DescribeUnit(target)}: {destinationResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var destination = destinationResult.Value;
+            var start = activeUnit.CurrentGridPosition;
+            var apBeforeMove = activeUnit.CurrentAP;
+            var moveResult = manager.MoveActiveUnit(activeUnit, destination);
+            if (moveResult.IsFailure)
+            {
+                return TacticalResult<bool>.Failure(moveResult.ErrorMessage);
+            }
+
+            LogDecision(
+                $"AI moved {DescribeUnit(activeUnit)} from {start} to {destination} toward {DescribeUnit(target)}; AP {apBeforeMove}->{activeUnit.CurrentAP}, reserve target {reactionApReserve}.");
+            return TacticalResult<bool>.Success(true);
+        }
+
+        private static TacticalResult<IGridMap> ResolveCurrentMap(CombatManager manager)
+        {
+            if (manager.GridManager == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot active move because no {nameof(GridManager)} is assigned.");
+            }
+
+            if (!manager.GridManager.HasCurrentMap)
+            {
+                if (manager.GridManager.MapDefinition == null)
+                {
+                    return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot active move because {nameof(GridManager)} has no map definition assigned.");
+                }
+
+                if (!manager.GridManager.RebuildMap())
+                {
+                    return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot active move because {nameof(GridManager)} could not build a current map.");
+                }
+            }
+
+            if (manager.GridManager.CurrentMap == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot active move because {nameof(GridManager)} has no current map.");
+            }
+
+            return TacticalResult<IGridMap>.Success(manager.GridManager.CurrentMap);
         }
 
         private int CompareTargetCandidates(TacticalUnit actor, TacticalUnit left, TacticalUnit right)
@@ -313,6 +600,138 @@ namespace ReactionTactics.AI
                 && candidate.IsAlive
                 && !ReferenceEquals(candidate, actor)
                 && actor.Team.IsHostileTo(candidate.Team);
+        }
+
+        private static TacticalResult ValidateMovementChoiceContext(
+            TacticalUnit actor,
+            TacticalUnit target,
+            IGridMap map)
+        {
+            if (actor == null)
+            {
+                return TacticalResult.Failure("Cannot choose an AI active move because no acting unit was provided.");
+            }
+
+            if (target == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI active move for {DescribeUnit(actor)} because no target was provided.");
+            }
+
+            if (map == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI active move for {DescribeUnit(actor)} because no grid map is available.");
+            }
+
+            if (!actor.IsAlive)
+            {
+                return TacticalResult.Failure($"{DescribeUnit(actor)} cannot choose an AI active move because it is defeated.");
+            }
+
+            if (!target.IsAlive)
+            {
+                return TacticalResult.Failure($"{DescribeUnit(actor)} cannot choose an AI active move because target {DescribeUnit(target)} is defeated.");
+            }
+
+            if (!actor.Team.IsHostileTo(target.Team))
+            {
+                return TacticalResult.Failure($"{DescribeUnit(actor)} cannot choose an AI active move toward friendly unit {DescribeUnit(target)}.");
+            }
+
+            if (!map.TryGetCell(actor.CurrentGridPosition, out _))
+            {
+                return TacticalResult.Failure($"{DescribeUnit(actor)} cannot choose an AI active move because its current cell {actor.CurrentGridPosition} is not on the map.");
+            }
+
+            if (!map.TryGetCell(target.CurrentGridPosition, out _))
+            {
+                return TacticalResult.Failure($"{DescribeUnit(actor)} cannot choose an AI active move because target cell {target.CurrentGridPosition} is not on the map.");
+            }
+
+            return TacticalResult.Success();
+        }
+
+        private static bool IsAttackAbility(AbilityDefinition ability)
+        {
+            return ability != null
+                && ability.CanBeUsedAsAction
+                && ability.Damage > 0
+                && (ability.Shape == AbilityShape.Melee
+                    || ability.Shape == AbilityShape.SingleTarget
+                    || ability.Shape == AbilityShape.Cone
+                    || ability.Shape == AbilityShape.Radius);
+        }
+
+        private static bool TryCreateAttackTarget(
+            TacticalUnit actor,
+            TacticalUnit target,
+            AbilityDefinition ability,
+            out ActionTarget actionTarget)
+        {
+            actionTarget = ActionTarget.None;
+            if (actor == null || target == null || ability == null)
+            {
+                return false;
+            }
+
+            switch (ability.Shape)
+            {
+                case AbilityShape.Melee:
+                case AbilityShape.SingleTarget:
+                    actionTarget = ActionTarget.ForUnit(target);
+                    return true;
+                case AbilityShape.Cone:
+                    if (actor.CurrentGridPosition == target.CurrentGridPosition)
+                    {
+                        return false;
+                    }
+
+                    actionTarget = ActionTarget.ForCell(target.CurrentGridPosition)
+                        .WithDirection(CardinalDirectionMath.FromTo(actor.CurrentGridPosition, target.CurrentGridPosition));
+                    return true;
+                case AbilityShape.Radius:
+                    actionTarget = ActionTarget.ForCell(target.CurrentGridPosition);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static int CompareMoveDestination(
+            ReachableCell left,
+            int leftDistance,
+            ReachableCell right,
+            int rightDistance)
+        {
+            var distanceComparison = leftDistance.CompareTo(rightDistance);
+            if (distanceComparison != 0)
+            {
+                return distanceComparison;
+            }
+
+            var costComparison = left.TotalApCost.CompareTo(right.TotalApCost);
+            if (costComparison != 0)
+            {
+                return costComparison;
+            }
+
+            return CompareGridPositions(left.Position, right.Position);
+        }
+
+        private static int CompareGridPositions(GridPosition left, GridPosition right)
+        {
+            var xComparison = left.X.CompareTo(right.X);
+            if (xComparison != 0)
+            {
+                return xComparison;
+            }
+
+            var zComparison = left.Z.CompareTo(right.Z);
+            if (zComparison != 0)
+            {
+                return zComparison;
+            }
+
+            return left.Y.CompareTo(right.Y);
         }
 
         private TacticalResult ValidateActiveTurn(CombatManager manager)
