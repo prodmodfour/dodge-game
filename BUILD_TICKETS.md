@@ -4232,7 +4232,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 144 — Add PlayMode tactical smoke test
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: add playmode tactical smoke test`
 
