@@ -4143,7 +4143,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 141 — Wire AoE action to UI and command router
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: integrate aoe attack gameplay flow`
 
