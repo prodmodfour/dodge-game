@@ -2209,7 +2209,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 075 — Add editor CLI tool to create default ability assets
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add default ability asset creator`
 

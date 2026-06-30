@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2549583416ac749558948a3104869092, type: 3}
+  m_Name: ConeShot
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Actions.AbilityDefinition
+  abilityKey: cone_shot
+  displayName: Cone Shot
+  apCost: 4
+  usage: 1
+  timing: 1
+  shape: 3
+  range: 4
+  radius: 0
+  damage: 3
+  triggersReactions: 1
+  description: Threaten a cardinal cone up to range 4. Units can avoid damage by
+    moving out of the declared cone before resolution.
