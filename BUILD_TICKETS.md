@@ -1781,7 +1781,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 060 — Add combat event bus
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add combat event bus`
 
