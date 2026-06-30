@@ -3001,7 +3001,7 @@ unity-ctrl --project "$PWD" test --filter ReactionSafetyAnalyzerTests
 
 ## 102 — Add brace reaction state
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add brace reaction damage reduction`
 

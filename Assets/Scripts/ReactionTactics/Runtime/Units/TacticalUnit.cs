@@ -42,6 +42,15 @@ namespace ReactionTactics.Units
         private int currentAP;
 
         [SerializeField]
+        [Tooltip("When true, the unit's next positive incoming damage is reduced by the stored brace amount.")]
+        private bool bracedUntilNextHit;
+
+        [SerializeField]
+        [Min(0)]
+        [Tooltip("Fixed damage reduction consumed by the next positive incoming damage while braced.")]
+        private int braceDamageReduction;
+
+        [SerializeField]
         [Tooltip("True while the unit is alive and available to combat systems.")]
         private bool isAlive;
 
@@ -100,6 +109,21 @@ namespace ReactionTactics.Units
             get { return isAlive && currentHP > 0; }
         }
 
+        public bool BracedUntilNextHit
+        {
+            get { return bracedUntilNextHit && braceDamageReduction > 0; }
+        }
+
+        public int BraceDamageReduction
+        {
+            get { return BracedUntilNextHit ? braceDamageReduction : 0; }
+        }
+
+        public DefenseState DefenseState
+        {
+            get { return BracedUntilNextHit ? DefenseState.Braced(braceDamageReduction) : DefenseState.None; }
+        }
+
         public bool IsDead
         {
             get { return !IsAlive; }
@@ -138,6 +162,7 @@ namespace ReactionTactics.Units
             currentGridPosition = ToVector3Int(startingPosition);
             currentHP = statsDefinition.MaxHP;
             currentAP = statsDefinition.MaxAP;
+            ClearBrace();
             isAlive = true;
         }
 
@@ -164,28 +189,92 @@ namespace ReactionTactics.Units
         /// </summary>
         public TacticalResult ApplyDamage(int amount, DamageSource source)
         {
+            return ApplyDamageWithReport(amount, source).WithoutValue();
+        }
+
+        /// <summary>
+        /// Applies deterministic HP damage and reports whether a prepared brace reduced it.
+        /// Positive incoming damage consumes brace even when the reduction prevents all HP loss.
+        /// </summary>
+        public TacticalResult<DamageApplication> ApplyDamageWithReport(int amount, DamageSource source)
+        {
             if (amount < 0)
             {
-                return TacticalResult.Failure("Damage amount cannot be negative.");
+                return TacticalResult<DamageApplication>.Failure("Damage amount cannot be negative.");
             }
 
             if (amount == 0)
             {
-                return TacticalResult.Success();
+                return TacticalResult<DamageApplication>.Success(
+                    DamageApplication.Unbraced(amount, source));
             }
 
             if (IsDead)
             {
-                return TacticalResult.Failure($"{DisplayName} is already defeated.");
+                return TacticalResult<DamageApplication>.Failure($"{DisplayName} is already defeated.");
             }
 
-            currentHP = Math.Max(0, currentHP - amount);
+            var wasBraced = BracedUntilNextHit;
+            var finalAmount = PreviewIncomingDamageAfterDefense(amount);
+            var preventedAmount = amount - finalAmount;
+            if (wasBraced)
+            {
+                ClearBrace();
+            }
+
+            currentHP = Math.Max(0, currentHP - finalAmount);
             if (currentHP == 0)
             {
                 MarkDead(source);
             }
 
+            var application = wasBraced
+                ? DamageApplication.Braced(amount, finalAmount, preventedAmount, source)
+                : DamageApplication.Unbraced(amount, source);
+            return TacticalResult<DamageApplication>.Success(application);
+        }
+
+        /// <summary>
+        /// Previews how much HP damage would remain after the current defense state.
+        /// This does not consume brace or modify HP.
+        /// </summary>
+        public int PreviewIncomingDamageAfterDefense(int amount)
+        {
+            if (amount < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(amount), amount, "Damage preview amount cannot be negative.");
+            }
+
+            return DefenseState.CalculateFinalDamage(amount);
+        }
+
+        /// <summary>
+        /// Sets a one-shot braced defense state that reduces the next positive incoming damage.
+        /// </summary>
+        public TacticalResult BraceUntilNextHit(int damageReduction)
+        {
+            if (damageReduction <= 0)
+            {
+                return TacticalResult.Failure("Brace damage reduction must be greater than zero.");
+            }
+
+            if (IsDead)
+            {
+                return TacticalResult.Failure($"{DisplayName} cannot brace because it is defeated.");
+            }
+
+            bracedUntilNextHit = true;
+            braceDamageReduction = damageReduction;
             return TacticalResult.Success();
+        }
+
+        /// <summary>
+        /// Clears any pending one-shot brace without changing HP or AP.
+        /// </summary>
+        public void ClearBrace()
+        {
+            bracedUntilNextHit = false;
+            braceDamageReduction = 0;
         }
 
         /// <summary>
@@ -247,13 +336,14 @@ namespace ReactionTactics.Units
         public override string ToString()
         {
             return IsInitialized
-                ? $"{DisplayName} {UnitId} [{team}] at {CurrentGridPosition} HP {currentHP}/{MaxHP} AP {currentAP}/{MaxAP}"
+                ? $"{DisplayName} {UnitId} [{team}] at {CurrentGridPosition} HP {currentHP}/{MaxHP} AP {currentAP}/{MaxAP}{(BracedUntilNextHit ? $" braced(-{braceDamageReduction})" : string.Empty)}"
                 : $"Uninitialized TacticalUnit '{name}' at {CurrentGridPosition}";
         }
 
         private void MarkDead(DamageSource source)
         {
             currentHP = 0;
+            ClearBrace();
             if (!isAlive)
             {
                 return;
@@ -271,6 +361,7 @@ namespace ReactionTactics.Units
             currentGridPosition = Vector3Int.zero;
             currentHP = 0;
             currentAP = 0;
+            ClearBrace();
             isAlive = false;
         }
 
@@ -288,6 +379,11 @@ namespace ReactionTactics.Units
 
             currentHP = Math.Max(0, currentHP);
             currentAP = Math.Max(0, currentAP);
+            braceDamageReduction = Math.Max(0, braceDamageReduction);
+            if (!bracedUntilNextHit || braceDamageReduction == 0)
+            {
+                ClearBrace();
+            }
 
             if (statsDefinition != null)
             {
@@ -298,6 +394,7 @@ namespace ReactionTactics.Units
             if (currentHP == 0)
             {
                 isAlive = false;
+                ClearBrace();
             }
         }
 

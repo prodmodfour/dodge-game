@@ -360,6 +360,65 @@ namespace ReactionTactics.Turns
         }
 
         /// <summary>
+        /// Braces the current reactor, spending AP for one-shot fixed damage reduction,
+        /// then advances the reaction window or resolves the pending action.
+        /// </summary>
+        public TacticalResult BraceCurrentReaction()
+        {
+            return BraceCurrentReaction(currentState.ReactingUnit);
+        }
+
+        /// <summary>
+        /// Braces a specific unit only when it is the current reactor in the open
+        /// reaction window. Brace is cleared when it reduces damage or the pending
+        /// action finishes resolving.
+        /// </summary>
+        public TacticalResult BraceCurrentReaction(TacticalUnit reactor)
+        {
+            if (unitRegistry == null)
+            {
+                return TacticalResult.Failure($"Cannot brace because {nameof(UnitRegistry)} is missing.");
+            }
+
+            var sourceIntent = currentReactionWindow != null
+                ? currentReactionWindow.SourceIntent
+                : currentState.PendingActionIntent as ActionIntent;
+            var commandResult = BraceReactionCommand.TryCreate(
+                reactor,
+                sourceIntent,
+                currentState,
+                currentReactionWindow);
+            if (commandResult.IsFailure)
+            {
+                return TacticalResult.Failure(commandResult.ErrorMessage);
+            }
+
+            var command = commandResult.Value;
+            if (!unitRegistry.TryGetLivingUnit(command.Reactor.UnitId, out var registeredReactor)
+                || !ReferenceEquals(registeredReactor, command.Reactor))
+            {
+                return TacticalResult.Failure($"{DescribeUnit(command.Reactor)} cannot brace because it is not the registered living unit for {command.Reactor.UnitId}.");
+            }
+
+            var previousAP = command.Reactor.CurrentAP;
+            var executeResult = command.Execute();
+            if (executeResult.IsFailure)
+            {
+                return executeResult;
+            }
+
+            if (command.Reactor.CurrentAP != previousAP)
+            {
+                eventBus?.PublishActionPointsChanged(command.Reactor, previousAP, command.Reactor.CurrentAP);
+            }
+
+            currentReactionWindow.CompleteCurrentReactor();
+            LogReactionBrace(command, previousAP);
+            currentState.SetState(currentState.CurrentRound, CombatPhase.ReactionWindow, sourceIntent.Actor, null, sourceIntent);
+            return AdvanceReactionWindowOrResolve(sourceIntent);
+        }
+
+        /// <summary>
         /// Moves the current reactor to a reachable destination, spends movement AP,
         /// completes that reactor's turn, and advances or closes the reaction window.
         /// </summary>
@@ -582,6 +641,18 @@ namespace ReactionTactics.Turns
                 return;
             }
 
+            if (request.CommandType == PlayerCommandType.SelectReaction
+                && request.ActionMode == SelectionActionMode.Brace)
+            {
+                var braceResult = BraceCurrentReaction(request.Unit ?? currentState.ReactingUnit);
+                if (braceResult.IsFailure)
+                {
+                    Debug.LogWarning($"{nameof(CombatManager)} could not brace reaction: {braceResult.ErrorMessage}", this);
+                }
+
+                return;
+            }
+
             if (!RequiresActiveActionLegality(request))
             {
                 return;
@@ -762,6 +833,7 @@ namespace ReactionTactics.Turns
             }
 
             currentState.SetState(currentState.CurrentRound, CombatPhase.ResolvingAction, intent.Actor, null, intent);
+            var reactionWindowToClear = currentReactionWindow;
             var resolver = new ActionResolver(eventBus, this, logActionFlow, () => unitRegistry.GetLivingUnits());
             var resolveResult = resolver.Resolve(intent);
             if (resolveResult.IsFailure)
@@ -770,6 +842,7 @@ namespace ReactionTactics.Turns
                 return resolveResult;
             }
 
+            ClearBraceStatesAfterPendingAction(reactionWindowToClear, intent);
             currentReactionWindow = null;
             currentState.SetState(currentState.CurrentRound, CombatPhase.ActiveTurn, intent.Actor, null, null);
             ClearResolvedActionSelection();
@@ -1028,6 +1101,18 @@ namespace ReactionTactics.Turns
                 this);
         }
 
+        private void LogReactionBrace(BraceReactionCommand command, int previousAP)
+        {
+            if (!logActionFlow)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"[Combat Log] {DescribeUnit(command.Reactor)} braced against '{command.SourceIntent.Ability.DisplayName}' for {command.Cost} AP; next incoming damage is reduced by {command.DamageReduction}. AP {previousAP}->{command.Reactor.CurrentAP}.",
+                this);
+        }
+
         private void LogReactionWindowClosed(ActionIntent intent, ReactionWindow window)
         {
             if (!logActionFlow)
@@ -1037,6 +1122,39 @@ namespace ReactionTactics.Turns
 
             Debug.Log(
                 $"[Combat Log] Reaction window closed for '{intent.Ability.DisplayName}' after {window.ProcessedReactorCount}/{window.ReactorCount} reactors completed or skipped. Resolving original action next.",
+                this);
+        }
+
+        private void ClearBraceStatesAfterPendingAction(ReactionWindow reactionWindow, ActionIntent intent)
+        {
+            if (reactionWindow == null)
+            {
+                return;
+            }
+
+            var reactors = reactionWindow.OrderedReactors;
+            for (var i = 0; i < reactors.Count; i += 1)
+            {
+                var reactor = reactors[i];
+                if (reactor == null || !reactor.BracedUntilNextHit)
+                {
+                    continue;
+                }
+
+                reactor.ClearBrace();
+                LogBraceExpiredAfterPendingAction(reactor, intent);
+            }
+        }
+
+        private void LogBraceExpiredAfterPendingAction(TacticalUnit reactor, ActionIntent intent)
+        {
+            if (!logActionFlow)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"[Combat Log] {DescribeUnit(reactor)}'s brace expired after '{intent.Ability.DisplayName}' resolved without consuming it.",
                 this);
         }
 

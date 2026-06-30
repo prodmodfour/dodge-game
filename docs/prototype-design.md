@@ -39,6 +39,8 @@ The prototype is about deterministic tactical timing. Attacks are avoided by spe
 - Only the current reactor in the reaction order may take a reaction command.
 - Reaction movement, Brace, and Pass are the prototype's expected baseline reaction choices.
 - Reaction movement spends AP, updates the unit's grid position, and can change whether the pending action affects that unit.
+- Brace costs 2 AP by default, prepares a one-shot fixed 2 damage reduction against the next positive incoming damage, and then advances the reaction window.
+- A brace clears when it reduces damage or when the pending action finishes resolving without consuming it.
 - Pass costs 0 AP and advances the reaction window.
 
 ## Reaction window ordering
