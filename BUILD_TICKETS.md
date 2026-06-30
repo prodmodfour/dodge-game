@@ -1953,7 +1953,7 @@ unity-ctrl --project "$PWD" test --filter ActiveActionLegalityTests
 
 ## 066 — Add active unit visual highlight
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: highlight active tactical unit`
 

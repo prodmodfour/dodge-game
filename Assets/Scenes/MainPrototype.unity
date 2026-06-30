@@ -131,6 +131,7 @@ GameObject:
   - component: {fileID: 231493075}
   - component: {fileID: 231493074}
   - component: {fileID: 231493073}
+  - component: {fileID: 231493076}
   m_Layer: 0
   m_Name: Shaman Enemy Unit#4
   m_TagString: Untagged
@@ -215,6 +216,26 @@ MonoBehaviour:
   currentHP: 8
   currentAP: 6
   isAlive: 1
+--- !u!114 &231493076
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 231493071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4805438748a799d6a3fc784aa44a8bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Units.UnitHighlightView
+  tacticalUnit: {fileID: 231493075}
+  eventBus: {fileID: 0}
+  combatManager: {fileID: 0}
+  activeMarker: {fileID: 0}
+  activeMarkerRenderer: {fileID: 0}
+  activeColor: {r: 1, g: 0.88, b: 0.05, a: 1}
+  markerLocalPosition: {x: 0, y: 0.04, z: 0}
+  markerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
 --- !u!1 &345129597
 GameObject:
   m_ObjectHideFlags: 0
@@ -1121,6 +1142,7 @@ GameObject:
   - component: {fileID: 1420885840}
   - component: {fileID: 1420885839}
   - component: {fileID: 1420885838}
+  - component: {fileID: 1420885841}
   m_Layer: 0
   m_Name: Rogue Player Unit#2
   m_TagString: Untagged
@@ -1205,6 +1227,26 @@ MonoBehaviour:
   currentHP: 11
   currentAP: 7
   isAlive: 1
+--- !u!114 &1420885841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1420885836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4805438748a799d6a3fc784aa44a8bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Units.UnitHighlightView
+  tacticalUnit: {fileID: 1420885840}
+  eventBus: {fileID: 0}
+  combatManager: {fileID: 0}
+  activeMarker: {fileID: 0}
+  activeMarkerRenderer: {fileID: 0}
+  activeColor: {r: 1, g: 0.88, b: 0.05, a: 1}
+  markerLocalPosition: {x: 0, y: 0.04, z: 0}
+  markerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
 --- !u!1 &1463449340
 GameObject:
   m_ObjectHideFlags: 0
@@ -1467,6 +1509,7 @@ GameObject:
   - component: {fileID: 1636160575}
   - component: {fileID: 1636160574}
   - component: {fileID: 1636160573}
+  - component: {fileID: 1636160576}
   m_Layer: 0
   m_Name: Knight Player Unit#1
   m_TagString: Untagged
@@ -1551,6 +1594,26 @@ MonoBehaviour:
   currentHP: 16
   currentAP: 6
   isAlive: 1
+--- !u!114 &1636160576
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1636160571}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4805438748a799d6a3fc784aa44a8bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Units.UnitHighlightView
+  tacticalUnit: {fileID: 1636160575}
+  eventBus: {fileID: 0}
+  combatManager: {fileID: 0}
+  activeMarker: {fileID: 0}
+  activeMarkerRenderer: {fileID: 0}
+  activeColor: {r: 1, g: 0.88, b: 0.05, a: 1}
+  markerLocalPosition: {x: 0, y: 0.04, z: 0}
+  markerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
 --- !u!1 &1698880739
 GameObject:
   m_ObjectHideFlags: 0
@@ -1743,6 +1806,7 @@ GameObject:
   - component: {fileID: 2078264064}
   - component: {fileID: 2078264063}
   - component: {fileID: 2078264062}
+  - component: {fileID: 2078264065}
   m_Layer: 0
   m_Name: Goblin Enemy Unit#3
   m_TagString: Untagged
@@ -1827,6 +1891,26 @@ MonoBehaviour:
   currentHP: 7
   currentAP: 6
   isAlive: 1
+--- !u!114 &2078264065
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2078264060}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4805438748a799d6a3fc784aa44a8bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Units.UnitHighlightView
+  tacticalUnit: {fileID: 2078264064}
+  eventBus: {fileID: 0}
+  combatManager: {fileID: 0}
+  activeMarker: {fileID: 0}
+  activeMarkerRenderer: {fileID: 0}
+  activeColor: {r: 1, g: 0.88, b: 0.05, a: 1}
+  markerLocalPosition: {x: 0, y: 0.04, z: 0}
+  markerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
