@@ -1454,7 +1454,7 @@ unity-ctrl --project "$PWD" rt_find_assets --params '{"filter":"t:UnitStatsDefin
 
 ## 049 — Add unit scene setup CLI tool
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add prototype unit scene setup tool`
 
