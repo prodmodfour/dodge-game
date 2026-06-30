@@ -2181,7 +2181,7 @@ unity-ctrl --project "$PWD" test --filter ActionDeclarationTests
 
 ## 074 — Add ability catalog component
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add ability catalog for prototype units`
 
