@@ -1277,7 +1277,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 043 — Add AP wallet behavior
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add unit action point wallet`
 

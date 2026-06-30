@@ -1,4 +1,5 @@
 using System;
+using ReactionTactics.Core;
 using ReactionTactics.Grid;
 using UnityEngine;
 
@@ -7,8 +8,8 @@ namespace ReactionTactics.Units
     /// <summary>
     /// Scene component that represents one combatant on the tactical grid.
     /// It stores identity, team, copied runtime resources, and current grid
-    /// position while leaving turn flow, AP spending, and damage resolution to
-    /// later combat systems.
+    /// position while owning the shared AP wallet used by both actions and reactions.
+    /// Turn flow and damage resolution are implemented by later combat systems.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class TacticalUnit : MonoBehaviour
@@ -150,6 +151,62 @@ namespace ReactionTactics.Units
         public void SetGridPosition(GridPosition position)
         {
             currentGridPosition = ToVector3Int(position);
+        }
+
+        /// <summary>
+        /// Returns whether this unit's shared AP wallet can pay the requested cost.
+        /// Phase, action, reaction, and alive-state legality are validated by combat systems.
+        /// </summary>
+        public bool CanSpendAP(int amount)
+        {
+            return amount >= 0 && currentAP >= amount;
+        }
+
+        /// <summary>
+        /// Spends AP from the shared action/reaction pool when enough points are available.
+        /// Expected player-facing failures are reported as tactical results rather than exceptions.
+        /// </summary>
+        public TacticalResult SpendAP(int amount)
+        {
+            if (amount < 0)
+            {
+                return TacticalResult.Failure("AP spend amount cannot be negative.");
+            }
+
+            if (currentAP < amount)
+            {
+                return TacticalResult.Failure($"{DisplayName} needs {amount} AP but only has {currentAP} AP.");
+            }
+
+            currentAP -= amount;
+            return TacticalResult.Success();
+        }
+
+        /// <summary>
+        /// Restores the shared AP wallet to the unit's current maximum AP for a new round.
+        /// </summary>
+        public void RefreshAP()
+        {
+            currentAP = MaxAP;
+        }
+
+        /// <summary>
+        /// Sets AP directly for deterministic tests while preserving wallet invariants.
+        /// Gameplay code should spend or refresh AP instead of calling this helper.
+        /// </summary>
+        public void SetAPForTest(int amount)
+        {
+            if (amount < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(amount), amount, "Test AP cannot be negative.");
+            }
+
+            if (amount > MaxAP)
+            {
+                throw new ArgumentOutOfRangeException(nameof(amount), amount, $"Test AP cannot exceed MaxAP ({MaxAP}).");
+            }
+
+            currentAP = amount;
         }
 
         public override string ToString()
