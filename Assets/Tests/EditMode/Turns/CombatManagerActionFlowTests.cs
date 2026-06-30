@@ -76,7 +76,7 @@ namespace ReactionTactics.Tests.EditMode.Turns
                 Assert.That(intent.DeclarationRound, Is.EqualTo(1));
                 Assert.That(intent.DeclarationSequence, Is.EqualTo(0));
 
-                Assert.That(phaseDuringDeclaration, Is.EqualTo(CombatPhase.ResolvingAction));
+                Assert.That(phaseDuringDeclaration, Is.EqualTo(CombatPhase.ReactionWindow));
                 Assert.That(pendingDuringDeclaration, Is.SameAs(intent));
                 Assert.That(phaseDuringResolution, Is.EqualTo(CombatPhase.ResolvingAction));
                 Assert.That(pendingDuringResolution, Is.SameAs(intent));

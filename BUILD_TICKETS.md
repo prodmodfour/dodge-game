@@ -2855,7 +2855,7 @@ unity-ctrl --project "$PWD" test --filter ReactionEligibilityTests
 
 ## 097 — Wire reaction window before action resolution
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: open reaction window before resolving actions`
 
