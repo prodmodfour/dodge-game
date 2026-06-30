@@ -1361,7 +1361,7 @@ unity-ctrl --project "$PWD" test --filter UnitRegistryTests
 
 ## 046 — Add prototype unit prefab
 
-Status: TODO
+Status: DONE
 
 **Commit:** `prefab: add prototype tactical unit prefab`
 
