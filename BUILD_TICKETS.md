@@ -1191,7 +1191,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 040 — Add movement pathfinding tests
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: cover movement ranges and paths`
 
