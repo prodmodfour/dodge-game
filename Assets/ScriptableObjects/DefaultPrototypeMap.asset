@@ -1,0 +1,210 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9fff1e6ac2b90c1b293bcadb46446ddf, type: 3}
+  m_Name: DefaultPrototypeMap
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Grid.GridMapDefinition
+  width: 8
+  depth: 8
+  defaultHeightY: 0
+  cellOverrides:
+  - x: 5
+    z: 0
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 6
+    z: 0
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 7
+    z: 0
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 4
+    z: 1
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 5
+    z: 1
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 6
+    z: 1
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 7
+    z: 1
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 2
+    z: 2
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 2
+  - x: 3
+    z: 2
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 4
+    z: 2
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 5
+    z: 2
+    heightY: 2
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 6
+    z: 2
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 2
+  - x: 7
+    z: 2
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 1
+    z: 3
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 2
+  - x: 2
+    z: 3
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 3
+    z: 3
+    heightY: 2
+    walkable: 0
+    blocksLineOfSight: 1
+    movementCost: 1
+  - x: 4
+    z: 3
+    heightY: 2
+    walkable: 0
+    blocksLineOfSight: 1
+    movementCost: 1
+  - x: 5
+    z: 3
+    heightY: 2
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 6
+    z: 3
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 1
+    z: 4
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 2
+    z: 4
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 3
+    z: 4
+    heightY: 2
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 4
+    z: 4
+    heightY: 2
+    walkable: 0
+    blocksLineOfSight: 1
+    movementCost: 1
+  - x: 5
+    z: 4
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 6
+    z: 4
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 2
+    z: 5
+    heightY: 1
+    walkable: 0
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 3
+    z: 5
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 4
+    z: 5
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 5
+    z: 5
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 2
+  - x: 3
+    z: 6
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 4
+    z: 6
+    heightY: 1
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 1
+  - x: 5
+    z: 6
+    heightY: 0
+    walkable: 1
+    blocksLineOfSight: 0
+    movementCost: 2

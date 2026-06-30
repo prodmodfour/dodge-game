@@ -679,7 +679,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 022 — Add editor menu to create the default prototype map
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add default map asset creator`
 
