@@ -4287,7 +4287,7 @@ unity-ctrl --project "$PWD" test --filter DeterministicCombatSimulationTests
 
 ## 146 — Add full-scene validation CLI smoke tool
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add full scene tactical smoke cli tool`
 
