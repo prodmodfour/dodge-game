@@ -1604,7 +1604,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 054 — Add selection state model
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add tactical selection state`
 
