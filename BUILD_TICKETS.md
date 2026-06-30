@@ -1249,7 +1249,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 042 — Add unit runtime component
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add tactical unit component`
 
