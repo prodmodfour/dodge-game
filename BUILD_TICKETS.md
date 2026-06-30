@@ -1631,7 +1631,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 055 — Add command input router
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add player command input router`
 
