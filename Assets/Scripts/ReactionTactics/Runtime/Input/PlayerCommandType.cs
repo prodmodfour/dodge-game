@@ -12,6 +12,7 @@ namespace ReactionTactics.Input
         ConfirmTarget = 3,
         Cancel = 4,
         EndTurn = 5,
-        SelectReaction = 6
+        SelectReaction = 6,
+        PassReaction = 7
     }
 }

@@ -10,92 +10,83 @@ using ReactionTactics.Units;
 using UnityEditor;
 using UnityEngine;
 
-public sealed class ReactionWindowFlowTests
+public sealed class PassReactionTests
 {
     [Test]
-    public void TriggeringActionWaitsForExplicitPassesBeforeResolvingOriginalAction()
+    public void ExplicitPassCompletesCurrentReactorAdvancesWindowAndCostsNoAp()
     {
         using (var fixture = new Fixture())
         {
-            var actor = fixture.CreateUnit("Flow Actor", new UnitId(1), TeamId.Player, new GridPosition(0, 0, 0));
-            var allyReactor = fixture.CreateUnit("Flow Ally Reactor", new UnitId(2), TeamId.Player, new GridPosition(0, 0, 2));
-            var farEnemyReactor = fixture.CreateUnit("Flow Far Enemy Reactor", new UnitId(3), TeamId.Enemy, new GridPosition(3, 0, 0));
-            var targetReactor = fixture.CreateUnit("Flow Target Reactor", new UnitId(4), TeamId.Enemy, new GridPosition(1, 0, 0));
+            var actor = fixture.CreateUnit("Pass Actor", new UnitId(1), TeamId.Player, new GridPosition(0, 0, 0));
+            var targetReactor = fixture.CreateUnit("Pass Target Reactor", new UnitId(2), TeamId.Enemy, new GridPosition(1, 0, 0));
+            var farReactor = fixture.CreateUnit("Pass Far Reactor", new UnitId(3), TeamId.Enemy, new GridPosition(2, 0, 0));
             fixture.AssignLoadout(actor, fixture.MeleeSlash);
 
             Assert.That(fixture.Manager.StartCombat().IsSuccess, Is.True);
 
             var eventOrder = new List<string>();
             var reactionUnits = new List<TacticalUnit>();
-            var reactionPhases = new List<CombatPhase>();
-            var reactingUnitsDuringEvents = new List<TacticalUnit>();
-            var pendingIntentsDuringReactions = new List<object>();
             ActionIntent declaredIntent = null;
-            ActionIntent resolvedIntent = null;
-            CombatPhase phaseDuringDeclaration = CombatPhase.NotStarted;
-            CombatPhase phaseDuringResolution = CombatPhase.NotStarted;
             ReactionWindow windowDuringResolution = null;
-            TacticalUnit[] completedReactorsDuringResolution = null;
-
             fixture.EventBus.ActionDeclared += eventData =>
             {
                 eventOrder.Add("declared");
                 declaredIntent = eventData.ActionIntent as ActionIntent;
-                phaseDuringDeclaration = fixture.Manager.CurrentState.Phase;
-                Assert.That(fixture.Manager.CurrentReactionWindow, Is.Not.Null);
-                Assert.That(fixture.Manager.CurrentReactionWindow.IsOpen, Is.True);
             };
             fixture.EventBus.ReactionTurnStarted += eventData =>
             {
                 eventOrder.Add("reaction");
                 reactionUnits.Add(eventData.Reactor);
-                reactionPhases.Add(fixture.Manager.CurrentState.Phase);
-                reactingUnitsDuringEvents.Add(fixture.Manager.CurrentState.ReactingUnit);
-                pendingIntentsDuringReactions.Add(fixture.Manager.CurrentState.PendingActionIntent);
-                Assert.That(fixture.Manager.CurrentReactionWindow.CurrentReactor, Is.SameAs(eventData.Reactor));
             };
-            fixture.EventBus.ActionResolved += eventData =>
+            fixture.EventBus.ActionResolved += _ =>
             {
                 eventOrder.Add("resolved");
-                resolvedIntent = eventData.ActionIntent as ActionIntent;
-                phaseDuringResolution = fixture.Manager.CurrentState.Phase;
                 windowDuringResolution = fixture.Manager.CurrentReactionWindow;
-                completedReactorsDuringResolution = ToArray(windowDuringResolution.CompletedReactors);
             };
 
             Assert.That(fixture.InputRouter.SelectUnit(actor).IsSuccess, Is.True);
             Assert.That(fixture.InputRouter.SelectMeleeAttack().IsSuccess, Is.True);
             Assert.That(fixture.InputRouter.ConfirmTargetUnit(targetReactor).IsSuccess, Is.True);
-            Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.SameAs(targetReactor));
-            Assert.That(fixture.InputRouter.RequestPassOrEndTurn().IsSuccess, Is.True);
-            Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.SameAs(allyReactor));
-            Assert.That(fixture.InputRouter.RequestPassReaction().IsSuccess, Is.True);
-            Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.SameAs(farEnemyReactor));
-            Assert.That(fixture.Manager.PassCurrentReaction().IsSuccess, Is.True);
 
-            Assert.That(eventOrder, Is.EqualTo(new[] { "declared", "reaction", "reaction", "reaction", "resolved" }));
             Assert.That(declaredIntent, Is.Not.Null);
-            Assert.That(resolvedIntent, Is.SameAs(declaredIntent));
-            Assert.That(phaseDuringDeclaration, Is.EqualTo(CombatPhase.ReactionWindow));
-            Assert.That(phaseDuringResolution, Is.EqualTo(CombatPhase.ResolvingAction));
-            Assert.That(reactionUnits.ToArray(), Is.EqualTo(new[] { targetReactor, allyReactor, farEnemyReactor }));
-            Assert.That(reactionPhases.ToArray(), Is.EqualTo(new[]
-            {
-                CombatPhase.ReactionWindow,
-                CombatPhase.ReactionWindow,
-                CombatPhase.ReactionWindow
-            }));
-            Assert.That(reactingUnitsDuringEvents.ToArray(), Is.EqualTo(reactionUnits.ToArray()));
-            Assert.That(pendingIntentsDuringReactions.ToArray(), Is.EqualTo(new object[]
-            {
-                declaredIntent,
-                declaredIntent,
-                declaredIntent
-            }));
+            Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ReactionWindow));
+            Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.SameAs(targetReactor));
+            Assert.That(fixture.Manager.CurrentState.PendingActionIntent, Is.SameAs(declaredIntent));
+            Assert.That(fixture.Manager.CurrentReactionWindow.CurrentReactor, Is.SameAs(targetReactor));
+            Assert.That(targetReactor.CurrentHP, Is.EqualTo(targetReactor.MaxHP));
 
+            var commandResult = PassReactionCommand.TryCreate(
+                targetReactor,
+                declaredIntent,
+                fixture.Manager.CurrentState,
+                fixture.Manager.CurrentReactionWindow);
+            Assert.That(commandResult.IsSuccess, Is.True, commandResult.ErrorMessage);
+            Assert.That(commandResult.Value.Cost, Is.EqualTo(0));
+
+            var targetApBeforePass = targetReactor.CurrentAP;
+            Assert.That(fixture.InputRouter.RequestPassOrEndTurn().IsSuccess, Is.True);
+
+            Assert.That(targetReactor.CurrentAP, Is.EqualTo(targetApBeforePass));
+            Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ReactionWindow));
+            Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.SameAs(farReactor));
+            Assert.That(fixture.Manager.CurrentReactionWindow.CompletedReactors, Is.EqualTo(new[] { targetReactor }));
+            Assert.That(fixture.Manager.CurrentReactionWindow.SkippedReactors, Is.Empty);
+            Assert.That(targetReactor.CurrentHP, Is.EqualTo(targetReactor.MaxHP));
+
+            Assert.That(fixture.InputRouter.RequestPassReaction().IsSuccess, Is.True);
+
+            Assert.That(eventOrder, Is.EqualTo(new[]
+            {
+                "declared",
+                "reaction",
+                "reaction",
+                "resolved"
+            }));
+            Assert.That(reactionUnits, Is.EqualTo(new[] { targetReactor, farReactor }));
             Assert.That(windowDuringResolution, Is.Not.Null);
             Assert.That(windowDuringResolution.IsClosed, Is.True);
-            Assert.That(completedReactorsDuringResolution, Is.EqualTo(new[] { targetReactor, allyReactor, farEnemyReactor }));
+            Assert.That(windowDuringResolution.CompletedReactors, Is.EqualTo(new[] { targetReactor, farReactor }));
+            Assert.That(windowDuringResolution.SkippedReactors, Is.Empty);
             Assert.That(fixture.Manager.CurrentReactionWindow, Is.Null);
             Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ActiveTurn));
             Assert.That(fixture.Manager.CurrentState.ActiveUnit, Is.SameAs(actor));
@@ -105,15 +96,32 @@ public sealed class ReactionWindowFlowTests
         }
     }
 
-    private static TacticalUnit[] ToArray(IReadOnlyList<TacticalUnit> units)
+    [Test]
+    public void PassReactionIsRejectedOutsideCurrentReactorTurnOrForWrongUnit()
     {
-        var result = new TacticalUnit[units.Count];
-        for (var i = 0; i < units.Count; i += 1)
+        using (var fixture = new Fixture())
         {
-            result[i] = units[i];
-        }
+            var actor = fixture.CreateUnit("Reject Actor", new UnitId(1), TeamId.Player, new GridPosition(0, 0, 0));
+            var currentReactor = fixture.CreateUnit("Reject Current Reactor", new UnitId(2), TeamId.Enemy, new GridPosition(1, 0, 0));
+            var wrongReactor = fixture.CreateUnit("Reject Wrong Reactor", new UnitId(3), TeamId.Enemy, new GridPosition(2, 0, 0));
+            fixture.AssignLoadout(actor, fixture.MeleeSlash);
 
-        return result;
+            Assert.That(fixture.Manager.StartCombat().IsSuccess, Is.True);
+
+            var outsideResult = fixture.Manager.PassCurrentReaction(actor);
+            Assert.That(outsideResult.IsFailure, Is.True);
+
+            Assert.That(fixture.InputRouter.SelectUnit(actor).IsSuccess, Is.True);
+            Assert.That(fixture.InputRouter.SelectMeleeAttack().IsSuccess, Is.True);
+            Assert.That(fixture.InputRouter.ConfirmTargetUnit(currentReactor).IsSuccess, Is.True);
+
+            var wrongUnitResult = fixture.Manager.PassCurrentReaction(wrongReactor);
+            Assert.That(wrongUnitResult.IsFailure, Is.True);
+            Assert.That(wrongUnitResult.ErrorMessage, Does.Contain("current reactor"));
+            Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ReactionWindow));
+            Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.SameAs(currentReactor));
+            Assert.That(fixture.Manager.CurrentReactionWindow.CompletedReactors, Is.Empty);
+        }
     }
 
     private sealed class Fixture : IDisposable
@@ -126,7 +134,7 @@ public sealed class ReactionWindowFlowTests
         {
             stats = ScriptableObject.CreateInstance<UnitStatsDefinition>();
             stats.Configure(
-                displayName: "Reaction Flow Test Unit",
+                displayName: "Pass Reaction Test Unit",
                 maxHP: 10,
                 maxAP: 6,
                 movementAnimationSpeed: 4f,
@@ -145,20 +153,20 @@ public sealed class ReactionWindowFlowTests
                 radius: 0,
                 damage: 4,
                 triggersReactions: true,
-                description: "Reaction-window flow test ability.");
+                description: "Pass reaction test ability.");
 
             mapDefinition = ScriptableObject.CreateInstance<GridMapDefinition>();
             mapDefinition.Configure(
                 width: 4,
-                depth: 3,
+                depth: 2,
                 defaultHeightY: 0,
                 overrides: Array.Empty<GridMapDefinition.CellOverride>());
 
-            var registryObject = CreateRoot("Reaction Flow Test Registry");
-            var gridObject = CreateRoot("Reaction Flow Test Grid");
-            var selectionObject = CreateRoot("Reaction Flow Test Selection");
-            var routerObject = CreateRoot("Reaction Flow Test Router");
-            var managerObject = CreateRoot("Reaction Flow Test Manager");
+            var registryObject = CreateRoot("Pass Reaction Test Registry");
+            var gridObject = CreateRoot("Pass Reaction Test Grid");
+            var selectionObject = CreateRoot("Pass Reaction Test Selection");
+            var routerObject = CreateRoot("Pass Reaction Test Router");
+            var managerObject = CreateRoot("Pass Reaction Test Manager");
 
             gridObject.SetActive(false);
             Registry = registryObject.AddComponent<UnitRegistry>();

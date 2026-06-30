@@ -288,6 +288,12 @@ namespace ReactionTactics.Input
             return Route(PlayerCommandType.EndTurn, controller != null ? controller.CurrentState : SelectionState.Empty);
         }
 
+        public TacticalResult RequestPassReaction()
+        {
+            var controller = ResolveSelectionController();
+            return Route(PlayerCommandType.PassReaction, controller != null ? controller.CurrentState : SelectionState.Empty);
+        }
+
         public TacticalResult RequestPassOrEndTurn()
         {
             return RequestEndTurn();

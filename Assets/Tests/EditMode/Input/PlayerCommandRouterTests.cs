@@ -148,15 +148,18 @@ namespace ReactionTactics.Tests.EditMode.Input
 
                 var cancelResult = router.Cancel();
                 var endTurnResult = router.RequestEndTurn();
+                var passReactionResult = router.RequestPassReaction();
 
                 Assert.That(cancelResult.IsSuccess, Is.True);
                 Assert.That(endTurnResult.IsSuccess, Is.True);
+                Assert.That(passReactionResult.IsSuccess, Is.True);
                 Assert.That(selection.SelectedUnit, Is.SameAs(actor));
                 Assert.That(selection.SelectedActionMode, Is.EqualTo(SelectionActionMode.None));
                 Assert.That(selection.SelectedTarget.HasTarget, Is.False);
-                Assert.That(requests[requests.Count - 2].CommandType, Is.EqualTo(PlayerCommandType.Cancel));
-                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.EndTurn));
-                Assert.That(requests[requests.Count - 1].Unit, Is.SameAs(actor));
+                Assert.That(requests[requests.Count - 3].CommandType, Is.EqualTo(PlayerCommandType.Cancel));
+                Assert.That(requests[requests.Count - 2].CommandType, Is.EqualTo(PlayerCommandType.EndTurn));
+                Assert.That(requests[requests.Count - 2].Unit, Is.SameAs(actor));
+                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.PassReaction));
             }
             finally
             {

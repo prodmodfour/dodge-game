@@ -2886,7 +2886,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 098 — Add pass reaction command
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add pass reaction command`
 

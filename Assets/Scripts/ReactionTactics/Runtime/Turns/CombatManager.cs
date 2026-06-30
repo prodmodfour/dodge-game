@@ -13,7 +13,7 @@ namespace ReactionTactics.Turns
     /// <summary>
     /// Scene-level shell for the high-level combat loop. It starts combat, refreshes
     /// round AP, advances active turns, listens for routed commands, opens the
-    /// prototype auto-pass reaction window for telegraphed actions, and sends
+    /// explicit pass reaction windows for telegraphed actions, and sends
     /// declared active actions through deterministic resolution; win/loss checks
     /// are added by later tickets.
     /// </summary>
@@ -261,6 +261,41 @@ namespace ReactionTactics.Turns
             return StartNextRoundAfterTurnOrderEnds(previousActiveUnit);
         }
 
+        /// <summary>
+        /// Passes the currently active reaction turn without spending AP. This is the
+        /// Space-key path: combat state already identifies which unit is reacting.
+        /// </summary>
+        public TacticalResult PassCurrentReaction()
+        {
+            return PassCurrentReaction(currentState.ReactingUnit);
+        }
+
+        /// <summary>
+        /// Passes a specific unit's current reaction turn, then advances the reaction
+        /// window or resolves the pending action when all reactors are complete.
+        /// </summary>
+        public TacticalResult PassCurrentReaction(TacticalUnit reactor)
+        {
+            var sourceIntent = currentReactionWindow != null
+                ? currentReactionWindow.SourceIntent
+                : currentState.PendingActionIntent as ActionIntent;
+            var commandResult = PassReactionCommand.TryCreate(
+                reactor,
+                sourceIntent,
+                currentState,
+                currentReactionWindow);
+            if (commandResult.IsFailure)
+            {
+                return TacticalResult.Failure(commandResult.ErrorMessage);
+            }
+
+            var command = commandResult.Value;
+            currentReactionWindow.CompleteCurrentReactor();
+            LogReactionPass(command);
+            currentState.SetState(currentState.CurrentRound, CombatPhase.ReactionWindow, sourceIntent.Actor, null, sourceIntent);
+            return AdvanceReactionWindowOrResolve(sourceIntent);
+        }
+
         private void Awake()
         {
             ResolveSceneReferences();
@@ -388,10 +423,32 @@ namespace ReactionTactics.Turns
         {
             if (request.CommandType == PlayerCommandType.EndTurn)
             {
+                if (currentState.IsReactionPhase)
+                {
+                    var passResult = PassCurrentReaction();
+                    if (passResult.IsFailure)
+                    {
+                        Debug.LogWarning($"{nameof(CombatManager)} could not pass reaction: {passResult.ErrorMessage}", this);
+                    }
+
+                    return;
+                }
+
                 var endTurnResult = EndActiveTurn();
                 if (endTurnResult.IsFailure)
                 {
                     Debug.LogWarning($"{nameof(CombatManager)} could not end turn: {endTurnResult.ErrorMessage}", this);
+                }
+
+                return;
+            }
+
+            if (request.CommandType == PlayerCommandType.PassReaction)
+            {
+                var passResult = PassCurrentReaction();
+                if (passResult.IsFailure)
+                {
+                    Debug.LogWarning($"{nameof(CombatManager)} could not pass reaction: {passResult.ErrorMessage}", this);
                 }
 
                 return;
@@ -428,9 +485,9 @@ namespace ReactionTactics.Turns
 
         /// <summary>
         /// Declares the selected active ability from a routed target-confirmation request,
-        /// stores the intent while reactions and resolution are pending, auto-passes the
-        /// current prototype reaction window when the ability triggers reactions, and
-        /// returns control to the same active unit.
+        /// stores the intent while reactions and resolution are pending, starts the
+        /// explicit reaction window when the ability triggers reactions, and resolves
+        /// the action after all reactors pass or complete.
         /// </summary>
         public TacticalResult DeclareAndResolveSelectedAction(PlayerCommandRequest request)
         {
@@ -504,30 +561,9 @@ namespace ReactionTactics.Turns
             PublishActionDeclarationEvents(intent, previousAP);
             LogActionDeclared(intent, previousAP);
 
-            if (intent.TriggersReactionWindow)
-            {
-                var autoPassResult = AutoPassCurrentReactionWindow(intent);
-                if (autoPassResult.IsFailure)
-                {
-                    currentReactionWindow = null;
-                    return autoPassResult;
-                }
-
-                currentState.SetState(currentState.CurrentRound, CombatPhase.ResolvingAction, request.Unit, null, intent);
-            }
-
-            var resolver = new ActionResolver(eventBus, this, logActionFlow, () => unitRegistry.GetLivingUnits());
-            var resolveResult = resolver.Resolve(intent);
-            if (resolveResult.IsFailure)
-            {
-                currentReactionWindow = null;
-                return resolveResult;
-            }
-
-            currentReactionWindow = null;
-            currentState.SetState(currentState.CurrentRound, CombatPhase.ActiveTurn, request.Unit, null, null);
-            ClearResolvedActionSelection();
-            return TacticalResult.Success();
+            return intent.TriggersReactionWindow
+                ? AdvanceReactionWindowOrResolve(intent)
+                : ResolveDeclaredAction(intent);
         }
 
         private TacticalResult OpenReactionWindow(ActionIntent intent)
@@ -550,7 +586,7 @@ namespace ReactionTactics.Turns
             return TacticalResult.Success();
         }
 
-        private TacticalResult AutoPassCurrentReactionWindow(ActionIntent intent)
+        private TacticalResult AdvanceReactionWindowOrResolve(ActionIntent intent)
         {
             if (intent == null)
             {
@@ -573,14 +609,42 @@ namespace ReactionTactics.Turns
                 eventBus?.PublishReactionTurnStarted(reactor, intent);
 
                 var eligibility = reactionEligibilityService.CanUnitReact(reactor, intent, currentState);
-                LogReactionAutoPass(intent, reactor, eligibility);
+                if (!eligibility.IsEligible || eligibility.ShouldAutoPass)
+                {
+                    LogReactionAutoPass(intent, reactor, eligibility);
+                    currentReactionWindow.SkipCurrentReactor();
+                    currentState.SetState(currentState.CurrentRound, CombatPhase.ReactionWindow, intent.Actor, null, intent);
+                    continue;
+                }
 
-                currentReactionWindow.SkipCurrentReactor();
-                currentState.SetState(currentState.CurrentRound, CombatPhase.ReactionWindow, intent.Actor, null, intent);
+                LogReactionAwaitingPass(intent, reactor, eligibility);
+                return TacticalResult.Success();
             }
 
             currentReactionWindow.Close();
             LogReactionWindowClosed(intent, currentReactionWindow);
+            return ResolveDeclaredAction(intent);
+        }
+
+        private TacticalResult ResolveDeclaredAction(ActionIntent intent)
+        {
+            if (intent == null)
+            {
+                return TacticalResult.Failure("Cannot resolve an action because no action intent was provided.");
+            }
+
+            currentState.SetState(currentState.CurrentRound, CombatPhase.ResolvingAction, intent.Actor, null, intent);
+            var resolver = new ActionResolver(eventBus, this, logActionFlow, () => unitRegistry.GetLivingUnits());
+            var resolveResult = resolver.Resolve(intent);
+            if (resolveResult.IsFailure)
+            {
+                currentReactionWindow = null;
+                return resolveResult;
+            }
+
+            currentReactionWindow = null;
+            currentState.SetState(currentState.CurrentRound, CombatPhase.ActiveTurn, intent.Actor, null, null);
+            ClearResolvedActionSelection();
             return TacticalResult.Success();
         }
 
@@ -732,16 +796,43 @@ namespace ReactionTactics.Turns
                 return;
             }
 
-            var reason = eligibility.IsEligible && !eligibility.ShouldAutoPass
-                ? "eligible, auto-passed until explicit reaction commands are implemented"
+            var reason = string.IsNullOrEmpty(eligibility.Reason)
+                ? "auto-passed by reaction eligibility rules"
                 : eligibility.Reason;
-            if (string.IsNullOrEmpty(reason))
-            {
-                reason = "auto-passed by prototype reaction-window flow";
-            }
 
             Debug.Log(
                 $"[Combat Log] Reaction auto-pass: {DescribeUnit(reactor)} responding to '{intent.Ability.DisplayName}' from {DescribeUnit(intent.Actor)} — {reason}.",
+                this);
+        }
+
+        private void LogReactionAwaitingPass(
+            ActionIntent intent,
+            TacticalUnit reactor,
+            ReactionEligibilityResult eligibility)
+        {
+            if (!logActionFlow)
+            {
+                return;
+            }
+
+            var reason = string.IsNullOrEmpty(eligibility.Reason)
+                ? "waiting for an explicit reaction command"
+                : eligibility.Reason;
+
+            Debug.Log(
+                $"[Combat Log] Reaction turn started: {DescribeUnit(reactor)} responding to '{intent.Ability.DisplayName}' from {DescribeUnit(intent.Actor)} — {reason}. Pass is available for 0 AP.",
+                this);
+        }
+
+        private void LogReactionPass(PassReactionCommand command)
+        {
+            if (!logActionFlow)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"[Combat Log] {DescribeUnit(command.Reactor)} passed reaction to '{command.SourceIntent.Ability.DisplayName}' for {command.Cost} AP.",
                 this);
         }
 
@@ -753,7 +844,7 @@ namespace ReactionTactics.Turns
             }
 
             Debug.Log(
-                $"[Combat Log] Reaction window closed for '{intent.Ability.DisplayName}' after {window.ProcessedReactorCount}/{window.ReactorCount} reactors auto-passed. Resolving original action next.",
+                $"[Combat Log] Reaction window closed for '{intent.Ability.DisplayName}' after {window.ProcessedReactorCount}/{window.ReactorCount} reactors completed or skipped. Resolving original action next.",
                 this);
         }
 

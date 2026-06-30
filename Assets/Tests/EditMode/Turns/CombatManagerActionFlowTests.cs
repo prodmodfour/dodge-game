@@ -51,6 +51,16 @@ namespace ReactionTactics.Tests.EditMode.Turns
 
                 Assert.That(actor.CurrentAP, Is.EqualTo(actor.MaxAP - fixture.MeleeSlash.APCost));
                 Assert.That(fixture.Manager.CurrentState.CurrentRound, Is.EqualTo(1));
+                Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ReactionWindow));
+                Assert.That(fixture.Manager.CurrentState.ActiveUnit, Is.SameAs(actor));
+                Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.SameAs(enemy));
+                Assert.That(fixture.Selection.SelectedUnit, Is.SameAs(actor));
+                Assert.That(fixture.Selection.SelectedActionMode, Is.EqualTo(SelectionActionMode.Melee));
+                Assert.That(fixture.Selection.SelectedTarget.Unit, Is.SameAs(enemy));
+                Assert.That(resolvedEvents.Count, Is.EqualTo(0));
+
+                Assert.That(fixture.InputRouter.RequestPassOrEndTurn().IsSuccess, Is.True);
+
                 Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ActiveTurn));
                 Assert.That(fixture.Manager.CurrentState.ActiveUnit, Is.SameAs(actor));
                 Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.Null);
