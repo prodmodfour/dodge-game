@@ -736,7 +736,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 024 — Add primitive tile view component
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid tile view component`
 
