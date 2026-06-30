@@ -4020,7 +4020,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 137 — Add scene content tests or validation CLI tool
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: validate prototype scene content`
 
