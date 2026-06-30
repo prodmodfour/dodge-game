@@ -3293,7 +3293,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 112 — Add tile highlight manager
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid tile highlight manager`
 
