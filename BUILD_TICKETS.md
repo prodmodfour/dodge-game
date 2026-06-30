@@ -4489,7 +4489,7 @@ Status: DONE
 
 ## 153 — Add known limitations document
 
-Status: TODO
+Status: DONE
 
 **Commit:** `docs: document prototype limitations`
 
