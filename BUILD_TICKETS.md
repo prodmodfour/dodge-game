@@ -1222,7 +1222,7 @@ unity-ctrl --project "$PWD" test --filter Pathfinding
 
 ## 041 — Add unit stats ScriptableObject
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add unit stats definition asset`
 
