@@ -3535,7 +3535,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 120 — Add AI controller shell
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add enemy ai controller shell`
 

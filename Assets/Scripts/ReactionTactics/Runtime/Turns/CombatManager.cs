@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ReactionTactics.AI;
 using ReactionTactics.Actions;
 using ReactionTactics.Commands;
 using ReactionTactics.Core;
@@ -34,6 +35,10 @@ namespace ReactionTactics.Turns
         private PlayerCommandRouter inputRouter;
 
         [SerializeField]
+        [Tooltip("Optional deterministic AI controller for enemy active turns and enemy reaction turns.")]
+        private AiController aiController;
+
+        [SerializeField]
         [Tooltip("Optional scene-scoped combat event bus for UI and logs.")]
         private CombatEventBus eventBus;
 
@@ -58,6 +63,7 @@ namespace ReactionTactics.Turns
         private PlayerCommandRouter subscribedInputRouter;
         private ReactionWindow currentReactionWindow;
         private readonly HashSet<TacticalUnit> deathSubscribedUnits = new HashSet<TacticalUnit>();
+        private bool isDelegatingAiActiveTurns;
         private bool hasCombatEndOutcome;
         private bool combatEndHasWinningTeam;
         private TeamId combatEndWinningTeam = TeamId.Player;
@@ -107,6 +113,11 @@ namespace ReactionTactics.Turns
             get { return inputRouter; }
         }
 
+        public AiController AiController
+        {
+            get { return aiController; }
+        }
+
         public CombatEventBus EventBus
         {
             get { return eventBus; }
@@ -137,7 +148,8 @@ namespace ReactionTactics.Turns
             UnitRegistry unitRegistry,
             GridManager gridManager,
             PlayerCommandRouter inputRouter,
-            CombatEventBus eventBus = null)
+            CombatEventBus eventBus = null,
+            AiController aiController = null)
         {
             UnsubscribeFromInputRouter();
             UnsubscribeFromRegisteredUnitDeaths();
@@ -147,6 +159,12 @@ namespace ReactionTactics.Turns
             if (this.inputRouter != null)
             {
                 this.inputRouter.CombatManager = this;
+            }
+
+            this.aiController = aiController != null ? aiController : GetComponent<AiController>();
+            if (this.aiController != null)
+            {
+                this.aiController.CombatManager = this;
             }
 
             this.eventBus = eventBus;
@@ -207,7 +225,13 @@ namespace ReactionTactics.Turns
                 Debug.Log($"Reaction Tactics active unit: {activeUnit.DisplayName} {activeUnit.UnitId} [{activeUnit.Team}] at {activeUnit.CurrentGridPosition}.", this);
             }
 
-            return TryEnterCombatOverIfNeeded(activeUnit);
+            var combatEndResult = TryEnterCombatOverIfNeeded(activeUnit);
+            if (combatEndResult.IsFailure || currentState.IsCombatOver)
+            {
+                return combatEndResult;
+            }
+
+            return DelegateActiveTurnToAiIfNeeded();
         }
 
         /// <summary>
@@ -646,6 +670,8 @@ namespace ReactionTactics.Turns
                 inputRouter.CombatManager = this;
             }
 
+            ResolveAiController();
+
             if (eventBus == null)
             {
                 eventBus = GetComponent<CombatEventBus>();
@@ -654,6 +680,104 @@ namespace ReactionTactics.Turns
                     eventBus = FindAnyObjectByType<CombatEventBus>();
                 }
             }
+        }
+
+        private AiController ResolveAiController()
+        {
+            if (aiController == null)
+            {
+                aiController = GetComponent<AiController>();
+            }
+
+            if (aiController != null)
+            {
+                aiController.CombatManager = this;
+            }
+
+            return aiController;
+        }
+
+        private TacticalResult DelegateActiveTurnToAiIfNeeded()
+        {
+            var controller = ResolveAiController();
+            if (controller == null || !controller.ShouldHandleActiveTurn(this))
+            {
+                return TacticalResult.Success();
+            }
+
+            if (isDelegatingAiActiveTurns)
+            {
+                return TacticalResult.Success();
+            }
+
+            isDelegatingAiActiveTurns = true;
+            try
+            {
+                const int maxConsecutiveAiPasses = 32;
+                var delegatedCount = 0;
+                while (controller != null
+                    && controller.ShouldHandleActiveTurn(this)
+                    && !currentState.IsCombatOver)
+                {
+                    if (delegatedCount >= maxConsecutiveAiPasses)
+                    {
+                        return TacticalResult.Failure(
+                            $"Stopped AI active-turn delegation after {maxConsecutiveAiPasses} consecutive passes to avoid an endless pass loop.");
+                    }
+
+                    var activeBefore = currentState.ActiveUnit;
+                    var roundBefore = currentState.CurrentRound;
+                    var result = controller.TakeActiveTurn(this);
+                    if (result.IsFailure)
+                    {
+                        return result;
+                    }
+
+                    delegatedCount += 1;
+                    if (ReferenceEquals(activeBefore, currentState.ActiveUnit)
+                        && roundBefore == currentState.CurrentRound
+                        && currentState.IsActiveUnitPhase)
+                    {
+                        return TacticalResult.Failure(
+                            $"AI active-turn delegation for {DescribeUnit(activeBefore)} did not advance combat state.");
+                    }
+
+                    controller = ResolveAiController();
+                }
+
+                return TacticalResult.Success();
+            }
+            finally
+            {
+                isDelegatingAiActiveTurns = false;
+            }
+        }
+
+        private bool TryDelegateReactionTurnToAi(
+            ActionIntent intent,
+            TacticalUnit reactor,
+            out TacticalResult result)
+        {
+            var controller = ResolveAiController();
+            if (controller == null || !controller.ShouldHandleReactionTurn(this, intent, reactor))
+            {
+                result = TacticalResult.Success();
+                return false;
+            }
+
+            result = controller.TakeReactionTurn(this, intent, reactor);
+            return true;
+        }
+
+        private void LogAiDelegationFailure(TacticalResult result, string context)
+        {
+            if (result.IsSuccess)
+            {
+                return;
+            }
+
+            Debug.LogWarning($"{nameof(CombatManager)} AI {context} delegation failed: {result.ErrorMessage}", this);
+            eventBus?.PublishCombatLog($"AI {context} delegation failed: {result.ErrorMessage}");
         }
 
         private TacticalResult StartNextRoundAfterTurnOrderEnds(TacticalUnit previousActiveUnit)
@@ -695,6 +819,8 @@ namespace ReactionTactics.Turns
             {
                 Debug.Log($"Reaction Tactics active unit: {nextActiveUnit.DisplayName} {nextActiveUnit.UnitId} [{nextActiveUnit.Team}] at {nextActiveUnit.CurrentGridPosition}.", this);
             }
+
+            LogAiDelegationFailure(DelegateActiveTurnToAiIfNeeded(), "active turn");
         }
 
         private void HandleCommandRequested(PlayerCommandRequest request)
@@ -961,6 +1087,11 @@ namespace ReactionTactics.Turns
                     currentReactionWindow.SkipCurrentReactor();
                     currentState.SetState(currentState.CurrentRound, CombatPhase.ReactionWindow, intent.Actor, null, intent);
                     continue;
+                }
+
+                if (TryDelegateReactionTurnToAi(intent, reactor, out var aiReactionResult))
+                {
+                    return aiReactionResult;
                 }
 
                 FocusInputOnCurrentReactor(reactor);

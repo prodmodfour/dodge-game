@@ -1410,6 +1410,7 @@ GameObject:
   - component: {fileID: 1092979093}
   - component: {fileID: 1092979096}
   - component: {fileID: 1092979095}
+  - component: {fileID: 1092979097}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -1522,6 +1523,7 @@ MonoBehaviour:
   unitRegistry: {fileID: 1494555728}
   gridManager: {fileID: 1092979091}
   inputRouter: {fileID: 1092979093}
+  aiController: {fileID: 1092979097}
   eventBus: {fileID: 1092979096}
   startCombatOnStart: 1
   logCombatStart: 1
@@ -1538,6 +1540,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9fd7600c02e44734bb69c17852b51f27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Turns.CombatEventBus
+--- !u!114 &1092979097
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1092979089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03f4b1479494d61baba0f1609ebb464f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.AI.AiController
+  controlledTeam: 1
+  automaticDelegationEnabled: 1
+  combatManager: {fileID: 1092979095}
+  logDecisions: 1
 --- !u!1 &1181229176
 GameObject:
   m_ObjectHideFlags: 0

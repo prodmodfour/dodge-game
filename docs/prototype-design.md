@@ -65,6 +65,10 @@ The prototype is about deterministic tactical timing. Attacks are avoided by spe
 
 Reactions do not open full nested reaction windows in the prototype. A reaction command should not recursively cause every other unit to receive another reaction turn. Future abilities may explicitly opt into special interrupt behavior, but that must be designed and implemented as a separate rule rather than as the default reaction behavior.
 
+## Solo AI shell
+
+When an `AiController` is present on the combat systems object, the combat manager delegates Enemy-team active turns and Enemy-team reaction turns to it. The initial deterministic AI shell only passes: active turns end immediately and reaction turns use Pass, so enemy-controlled phases do not require player input while later AI tickets add target selection, movement, attacks, and defensive choices.
+
 ## Option A melee timing
 
 Melee uses declaration-in-range, resolution-after-reactions timing:
