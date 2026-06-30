@@ -2397,7 +2397,7 @@ unity-ctrl --project "$PWD" test --filter AbilityDeclaration
 
 ## 081 — Implement melee targeting validation
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: validate melee attack targets`
 

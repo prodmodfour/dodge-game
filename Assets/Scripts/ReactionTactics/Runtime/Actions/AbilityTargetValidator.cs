@@ -422,6 +422,11 @@ namespace ReactionTactics.Actions
                 return TacticalResult.Success();
             }
 
+            if (context.Ability.Shape == AbilityShape.Melee)
+            {
+                return ValidateMeleeRange(context);
+            }
+
             var range = GetRangeLimit(context.Actor, context.Ability);
             var distance = context.Actor.CurrentGridPosition.HorizontalDistanceTo(context.Target.TargetCell);
             if (distance <= range)
@@ -431,6 +436,28 @@ namespace ReactionTactics.Actions
 
             return TacticalResult.Failure(
                 $"{DescribeAbility(context.Ability)} target cell {context.Target.TargetCell} is {distance} cells away from {DescribeUnit(context.Actor)}, beyond range {range}.");
+        }
+
+        private static TacticalResult ValidateMeleeRange(AbilityTargetValidationContext context)
+        {
+            var actorPosition = context.Actor.CurrentGridPosition;
+            var targetCell = context.Target.TargetCell;
+            var distance = actorPosition.HorizontalDistanceTo(targetCell);
+            var range = GetRangeLimit(context.Actor, context.Ability);
+
+            if (distance == 0)
+            {
+                return TacticalResult.Failure(
+                    $"{DescribeAbility(context.Ability)} requires an adjacent hostile target; {DescribeUnit(context.Target.TargetUnit)} is in the same cell {targetCell} as {DescribeUnit(context.Actor)}.");
+            }
+
+            if (distance <= range)
+            {
+                return TacticalResult.Success();
+            }
+
+            return TacticalResult.Failure(
+                $"{DescribeAbility(context.Ability)} requires a hostile target in melee range {range}, but target cell {targetCell} is {distance} cells away from {DescribeUnit(context.Actor)}.");
         }
 
         private static AbilityTargetRelationship ResolveTargetRelationship(AbilityTargetValidationContext context)
@@ -457,7 +484,9 @@ namespace ReactionTactics.Actions
 
         private static int GetRangeLimit(TacticalUnit actor, AbilityDefinition ability)
         {
-            return ability.Shape == AbilityShape.Melee ? actor.MeleeRange : ability.Range;
+            return ability.Shape == AbilityShape.Melee
+                ? Math.Max(UnitStatsDefinition.MinimumMeleeRange, actor.MeleeRange)
+                : ability.Range;
         }
 
         private static bool IsExactRequestedUsage(AbilityUsage requestedUsage)
