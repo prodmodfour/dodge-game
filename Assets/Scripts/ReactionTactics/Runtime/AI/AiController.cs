@@ -154,8 +154,8 @@ namespace ReactionTactics.AI
         private bool skipDecisionPacing;
 
         [SerializeField]
-        [Tooltip("Write concise debug logs for AI movement and pass decisions.")]
-        private bool logDecisions = true;
+        [Tooltip("Write optional console debug logs for AI movement, attack, brace, and pass decisions. Keep disabled for normal playtest builds.")]
+        private bool logDecisions;
 
         [SerializeField]
         [Min(0)]
@@ -1030,7 +1030,7 @@ namespace ReactionTactics.AI
             automaticDelegationEnabled = true;
             decisionDelaySeconds = DefaultDecisionDelaySeconds;
             skipDecisionPacing = false;
-            logDecisions = true;
+            logDecisions = false;
             targetSelectionVerticalWeight = DefaultTargetSelectionVerticalWeight;
             reactionApReserve = DefaultReactionApReserve;
             ResolveCombatManager();

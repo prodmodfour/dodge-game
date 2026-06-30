@@ -322,8 +322,8 @@ namespace ReactionTactics.Editor
             serializedObject.Update();
             SetObjectReference(serializedObject, "sourceCamera", camera);
             SetBool(serializedObject, "ignorePointerOverUi", true);
-            SetBool(serializedObject, "logClickedCells", true);
-            SetBool(serializedObject, "logClickedUnits", true);
+            SetBool(serializedObject, "logClickedCells", false);
+            SetBool(serializedObject, "logClickedUnits", false);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(gridPicker);
         }

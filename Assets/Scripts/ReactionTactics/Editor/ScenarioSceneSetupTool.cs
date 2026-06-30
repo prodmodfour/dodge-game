@@ -391,6 +391,8 @@ namespace ReactionTactics.Editor
         {
             combatManager.Configure(registry, gridManager, inputRouter, eventBus, aiController);
             combatManager.StartCombatOnStart = true;
+            combatManager.LogCombatStart = false;
+            combatManager.LogActionFlow = false;
             EditorUtility.SetDirty(combatManager);
         }
 

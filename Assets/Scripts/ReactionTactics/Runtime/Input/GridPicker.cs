@@ -38,12 +38,12 @@ namespace ReactionTactics.Input
         private bool ignorePointerOverUi = true;
 
         [SerializeField]
-        [Tooltip("Write a concise debug log when a tile is clicked. Useful until the command router consumes click events.")]
-        private bool logClickedCells = true;
+        [Tooltip("Write optional console debug logs when grid tiles are clicked. Keep disabled for normal playtest builds to avoid noisy click logs.")]
+        private bool logClickedCells;
 
         [SerializeField]
-        [Tooltip("Write a concise debug log when a tactical unit is clicked. Useful until the command router consumes click events.")]
-        private bool logClickedUnits = true;
+        [Tooltip("Write optional console debug logs when tactical units are clicked. Keep disabled for normal playtest builds to avoid noisy click logs.")]
+        private bool logClickedUnits;
 
         private static readonly Type EventSystemType = ResolveEventSystemType();
         private static readonly PropertyInfo CurrentEventSystemProperty = EventSystemType != null

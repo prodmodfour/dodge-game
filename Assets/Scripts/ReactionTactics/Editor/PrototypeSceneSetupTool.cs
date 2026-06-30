@@ -200,12 +200,12 @@ namespace ReactionTactics.Editor
             aiController.CombatManager = combatManager;
             aiController.DecisionDelaySeconds = AiController.DefaultDecisionDelaySeconds;
             aiController.SkipDecisionPacing = false;
-            aiController.LogDecisions = true;
+            aiController.LogDecisions = false;
 
             combatManager.Configure(unitRegistry, gridManager, inputRouter, eventBus, aiController);
             combatManager.StartCombatOnStart = true;
-            combatManager.LogCombatStart = true;
-            combatManager.LogActionFlow = true;
+            combatManager.LogCombatStart = false;
+            combatManager.LogActionFlow = false;
 
             EditorUtility.SetDirty(systemsRoot);
             EditorUtility.SetDirty(eventBus);

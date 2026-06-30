@@ -48,12 +48,12 @@ namespace ReactionTactics.Turns
         private bool startCombatOnStart = true;
 
         [SerializeField]
-        [Tooltip("Write concise round-start and active-unit logs while the prototype combat loop advances.")]
-        private bool logCombatStart = true;
+        [Tooltip("Write optional console debug logs for round starts and active unit changes. The CombatLog UI still receives combat events when this is off.")]
+        private bool logCombatStart;
 
         [SerializeField]
-        [Tooltip("Write concise declaration and resolution logs while actions pass through the shell resolver.")]
-        private bool logActionFlow = true;
+        [Tooltip("Write optional console debug logs for action declaration, reaction, movement, brace, and resolution flow. The CombatLog UI still receives combat events when this is off.")]
+        private bool logActionFlow;
 
         private readonly CombatState currentState = new CombatState();
         private readonly TurnOrderService turnOrderService = new TurnOrderService();
@@ -678,8 +678,8 @@ namespace ReactionTactics.Turns
         private void Reset()
         {
             startCombatOnStart = true;
-            logCombatStart = true;
-            logActionFlow = true;
+            logCombatStart = false;
+            logActionFlow = false;
             ClearCombatEndOutcome();
             ResolveSceneReferences();
         }

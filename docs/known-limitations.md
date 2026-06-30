@@ -22,7 +22,7 @@ This document separates the current Reaction Tactics prototype boundary from fut
 
 - The HUD, action menu, reaction menu, combat log, help overlay, and debug hover information are prototype UI surfaces.
 - UI layout is optimized for fast iteration in the Unity editor and Linux prototype build, not for multiple aspect ratios, localization, gamepad navigation, touch input, or accessibility review.
-- Some debugging information remains visible by design because it helps validate grid positions, AP costs, occupancy, and action outcomes during playtests.
+- Some in-game debugging information remains visible by design because it helps validate grid positions, AP costs, occupancy, and action outcomes during playtests; noisy console click/action/AI debug logs are opt-in and disabled by default.
 
 ### Scenario content and balance
 

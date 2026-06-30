@@ -25,7 +25,7 @@ namespace ReactionTactics.Actions
         public ActionResolver(
             CombatEventBus eventBus = null,
             UnityEngine.Object logContext = null,
-            bool logResolutions = true,
+            bool logResolutions = false,
             Func<IReadOnlyList<TacticalUnit>> combatantProvider = null)
         {
             this.eventBus = eventBus;

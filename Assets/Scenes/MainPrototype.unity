@@ -776,8 +776,8 @@ MonoBehaviour:
   maxRaycastDistance: 500
   triggerInteraction: 1
   ignorePointerOverUi: 1
-  logClickedCells: 1
-  logClickedUnits: 1
+  logClickedCells: 0
+  logClickedUnits: 0
 --- !u!114 &1092979093
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -833,8 +833,8 @@ MonoBehaviour:
   aiController: {fileID: 1092979097}
   eventBus: {fileID: 1092979096}
   startCombatOnStart: 1
-  logCombatStart: 1
-  logActionFlow: 1
+  logCombatStart: 0
+  logActionFlow: 0
 --- !u!114 &1092979096
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -864,7 +864,7 @@ MonoBehaviour:
   combatManager: {fileID: 1092979095}
   decisionDelaySeconds: 0.35
   skipDecisionPacing: 0
-  logDecisions: 1
+  logDecisions: 0
   targetSelectionVerticalWeight: 1
   reactionApReserve: 2
 --- !u!1 &1494555725

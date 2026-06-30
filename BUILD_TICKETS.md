@@ -4511,7 +4511,7 @@ Status: DONE
 
 ## 154 — Final prototype cleanup pass
 
-Status: TODO
+Status: DONE
 
 **Commit:** `chore: clean up prototype before handoff`
 
