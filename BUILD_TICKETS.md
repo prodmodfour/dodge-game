@@ -1516,7 +1516,7 @@ unity-ctrl --project "$PWD" test --filter Unit
 
 ## 051 — Add tactical camera rig
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add tactical camera rig`
 
