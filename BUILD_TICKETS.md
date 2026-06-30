@@ -4402,7 +4402,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 150 — Profile the prototype scene briefly
 
-Status: TODO
+Status: DONE
 
 **Commit:** `perf: add initial prototype performance notes`
 
