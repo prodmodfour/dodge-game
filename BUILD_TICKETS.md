@@ -853,7 +853,7 @@ unity-ctrl --project "$PWD" menu "File/Save"
 
 ## 028 — Add grid neighbor service
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid neighbor service`
 
