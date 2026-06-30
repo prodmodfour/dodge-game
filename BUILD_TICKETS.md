@@ -998,7 +998,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 033 — Implement reachable-cell search
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: calculate reachable cells by ap budget`
 
