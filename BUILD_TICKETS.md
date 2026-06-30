@@ -1163,7 +1163,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 039 — Add movement path animation component
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: animate units along grid paths`
 
