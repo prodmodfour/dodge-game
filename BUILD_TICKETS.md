@@ -764,7 +764,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 025 — Add terrain visualizer
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: generate visible grid terrain from map`
 
