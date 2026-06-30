@@ -591,7 +591,7 @@ unity-ctrl --project "$PWD" test --filter GridMapTests
 
 ## 019 — Add grid/world conversion metrics
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add grid world metrics`
 
