@@ -971,7 +971,7 @@ unity-ctrl --project "$PWD" test --filter GridTerrain
 
 ## 032 — Add pathfinding node and path result types
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add pathfinding result types`
 
