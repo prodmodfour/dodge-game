@@ -2739,7 +2739,7 @@ unity-ctrl --project "$PWD" test --filter DamageEventTests
 
 ## 093 — Add attack shape integration tests
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: cover deterministic attack shape resolution`
 
