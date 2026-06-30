@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Shaman
   m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Units.UnitStatsDefinition
   displayName: Shaman
-  maxHP: 8
-  maxAP: 6
+  maxHP: 13
+  maxAP: 8
   movementAnimationSpeed: 4
   meleeRange: 1
   teamColorHint: {r: 0.2, g: 0.7, b: 0.68, a: 1}

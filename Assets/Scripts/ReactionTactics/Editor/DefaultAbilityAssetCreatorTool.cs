@@ -37,9 +37,9 @@ namespace ReactionTactics.Editor
                 AbilityShape.Melee,
                 0,
                 0,
-                4,
+                3,
                 true,
-                "Declare a melee attack, allow reactions, then deal deterministic damage only if the target remains in melee range at resolution."),
+                "Declare a melee attack, allow reactions, then deal moderate deterministic damage only if the target remains in melee range at resolution."),
             new AbilitySpec(
                 "cone_shot",
                 "Cone Shot",

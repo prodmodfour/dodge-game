@@ -3959,7 +3959,7 @@ unity-ctrl --project "$PWD" menu "File/Save Project"
 
 ## 135 — Tune default AP, HP, and damage values
 
-Status: TODO
+Status: DONE
 
 **Commit:** `balance: tune prototype ap hp and damage values`
 

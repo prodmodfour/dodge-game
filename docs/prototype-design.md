@@ -20,6 +20,32 @@ The prototype is about deterministic tactical timing. Attacks are avoided by spe
 - Spending AP on an active turn can reduce that unit's ability to react later in the round.
 - Dead units do not need AP refreshes and should be ignored by turn and reaction systems.
 
+## Prototype balance snapshot
+
+Current default unit stats are tuned so active actions leave meaningful reaction choices without letting a unit do everything in one round:
+
+| Unit | Max HP | Max AP | Notes |
+| --- | ---: | ---: | --- |
+| Knight | 18 | 7 | Durable melee anchor; a melee action leaves 4 AP for later movement or Brace. |
+| Rogue | 14 | 8 | Mobile skirmisher with enough AP for a short active move, melee, and a modest reaction. |
+| Archer | 14 | 8 | Cone user; Cone Shot leaves 4 AP before any active movement. |
+| Mage | 12 | 8 | Fragile AoE user; Fireball leaves 3 AP, so active movement competes with reaction safety. |
+| Goblin | 12 | 7 | Low-durability melee enemy that can still keep AP for one reaction choice. |
+| Shaman | 13 | 8 | Enemy AoE caster with the same heavy-action tradeoff as the Mage. |
+
+Default action and reaction values are:
+
+| Ability or command | AP cost | Damage | Balance intent |
+| --- | ---: | ---: | --- |
+| Movement | path cost | 0 | Each entered cell costs the destination terrain movement cost, usually 1 AP and occasionally 2 AP on rough cells. Active and reaction movement use the same shared AP pool. |
+| Melee Slash | 3 | 3 | Efficient single-target pressure that still requires the target to remain in melee range after reactions. |
+| Cone Shot | 4 | 3 | Wider threat that leaves enough AP for a later short reaction if the user did not also move far. |
+| Fireball | 5 | 4 | Highest default damage and area threat; the cost intentionally leaves only limited AP for reaction movement. |
+| Brace | 2 | reduces next hit by 2 | Defensive fallback when movement cannot escape the pending action. |
+| Pass Reaction | 0 | 0 | Conserves AP and advances the reaction window. |
+
+These values mean the minimum default HP is 12 while the highest single hit is 4 damage, so no default unit is defeated by one unavoidable attack and most units survive at least two hits. Spending AP on active movement or heavy attacks reduces how far that unit can reaction-move later in the round.
+
 ## Actions vs. reactions
 
 ### Targeting confirmation

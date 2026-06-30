@@ -18,12 +18,12 @@ namespace ReactionTactics.Editor
 
         private static readonly UnitStatsSpec[] DefaultUnitStats =
         {
-            new UnitStatsSpec("Knight", 16, 6, 3.75f, DefaultMeleeRange, new Color(0.28f, 0.43f, 0.95f, 1f)),
-            new UnitStatsSpec("Rogue", 11, 7, 5.00f, DefaultMeleeRange, new Color(0.22f, 0.78f, 0.42f, 1f)),
-            new UnitStatsSpec("Archer", 10, 6, 4.25f, DefaultMeleeRange, new Color(0.86f, 0.66f, 0.24f, 1f)),
-            new UnitStatsSpec("Mage", 8, 6, DefaultMovementAnimationSpeed, DefaultMeleeRange, new Color(0.62f, 0.36f, 0.95f, 1f)),
-            new UnitStatsSpec("Goblin", 7, 6, 4.50f, DefaultMeleeRange, new Color(0.72f, 0.24f, 0.18f, 1f)),
-            new UnitStatsSpec("Shaman", 8, 6, DefaultMovementAnimationSpeed, DefaultMeleeRange, new Color(0.20f, 0.70f, 0.68f, 1f))
+            new UnitStatsSpec("Knight", 18, 7, 3.75f, DefaultMeleeRange, new Color(0.28f, 0.43f, 0.95f, 1f)),
+            new UnitStatsSpec("Rogue", 14, 8, 5.00f, DefaultMeleeRange, new Color(0.22f, 0.78f, 0.42f, 1f)),
+            new UnitStatsSpec("Archer", 14, 8, 4.25f, DefaultMeleeRange, new Color(0.86f, 0.66f, 0.24f, 1f)),
+            new UnitStatsSpec("Mage", 12, 8, DefaultMovementAnimationSpeed, DefaultMeleeRange, new Color(0.62f, 0.36f, 0.95f, 1f)),
+            new UnitStatsSpec("Goblin", 12, 7, 4.50f, DefaultMeleeRange, new Color(0.72f, 0.24f, 0.18f, 1f)),
+            new UnitStatsSpec("Shaman", 13, 8, DefaultMovementAnimationSpeed, DefaultMeleeRange, new Color(0.20f, 0.70f, 0.68f, 1f))
         };
 
         public static object HandleCommand(JObject parameters)

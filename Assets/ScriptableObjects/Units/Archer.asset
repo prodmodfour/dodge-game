@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Archer
   m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Units.UnitStatsDefinition
   displayName: Archer
-  maxHP: 10
-  maxAP: 6
+  maxHP: 14
+  maxAP: 8
   movementAnimationSpeed: 4.25
   meleeRange: 1
   teamColorHint: {r: 0.86, g: 0.66, b: 0.24, a: 1}

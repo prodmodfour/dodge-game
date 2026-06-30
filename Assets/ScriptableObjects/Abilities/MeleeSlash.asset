@@ -20,8 +20,8 @@ MonoBehaviour:
   shape: 2
   range: 0
   radius: 0
-  damage: 4
+  damage: 3
   triggersReactions: 1
   ignoresLineOfSight: 0
-  description: Declare a melee attack, allow reactions, then deal deterministic damage
-    only if the target remains in melee range at resolution.
+  description: Declare a melee attack, allow reactions, then deal moderate deterministic
+    damage only if the target remains in melee range at resolution.

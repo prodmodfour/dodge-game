@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Mage
   m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Units.UnitStatsDefinition
   displayName: Mage
-  maxHP: 8
-  maxAP: 6
+  maxHP: 12
+  maxAP: 8
   movementAnimationSpeed: 4
   meleeRange: 1
   teamColorHint: {r: 0.62, g: 0.36, b: 0.95, a: 1}

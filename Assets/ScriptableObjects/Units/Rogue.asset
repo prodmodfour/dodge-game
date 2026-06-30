@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Rogue
   m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Units.UnitStatsDefinition
   displayName: Rogue
-  maxHP: 11
-  maxAP: 7
+  maxHP: 14
+  maxAP: 8
   movementAnimationSpeed: 5
   meleeRange: 1
   teamColorHint: {r: 0.22, g: 0.78, b: 0.42, a: 1}
