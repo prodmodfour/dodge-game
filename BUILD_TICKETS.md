@@ -2013,7 +2013,7 @@ unity-ctrl --project "$PWD" test --filter Turn
 
 ## 068 — Add ability timing and shape enums
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add ability timing and shape enums`
 
