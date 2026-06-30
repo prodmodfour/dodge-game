@@ -68,6 +68,33 @@ public sealed class ActiveMoveCommandTests
     }
 
     [Test]
+    public void RoutedMoveTargetExecutesActiveMovementAndClearsMoveSelection()
+    {
+        using (var fixture = new Fixture())
+        {
+            var activeUnit = fixture.CreateUnit("Routed Active Move Knight", new UnitId(1), TeamId.Player, new GridPosition(0, 0, 0));
+            fixture.CreateUnit("Routed Active Move Enemy", new UnitId(2), TeamId.Enemy, new GridPosition(3, 0, 0));
+            Assert.That(fixture.Manager.StartCombat().IsSuccess, Is.True);
+            Assert.That(fixture.InputRouter.SelectUnit(activeUnit).IsSuccess, Is.True);
+            Assert.That(fixture.InputRouter.SelectMove().IsSuccess, Is.True);
+
+            var destination = new GridPosition(1, 0, 0);
+            var apBeforeMove = activeUnit.CurrentAP;
+            var routeResult = fixture.InputRouter.ConfirmTargetCell(destination);
+
+            Assert.That(routeResult.IsSuccess, Is.True, routeResult.ErrorMessage);
+            Assert.That(activeUnit.CurrentGridPosition, Is.EqualTo(destination));
+            Assert.That(activeUnit.CurrentAP, Is.EqualTo(apBeforeMove - 1));
+            Assert.That(fixture.Selection.SelectedUnit, Is.SameAs(activeUnit));
+            Assert.That(fixture.Selection.SelectedActionMode, Is.EqualTo(SelectionActionMode.None));
+            Assert.That(fixture.Selection.SelectedTarget.HasTarget, Is.False);
+            Assert.That(fixture.Manager.CurrentReactionWindow, Is.Null);
+            Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ActiveTurn));
+            Assert.That(fixture.Manager.CurrentState.ActiveUnit, Is.SameAs(activeUnit));
+        }
+    }
+
+    [Test]
     public void ActiveMoveRejectsNonActiveUnitsOccupiedDestinationsAndNonActiveTurnPhases()
     {
         using (var fixture = new Fixture())
@@ -165,7 +192,9 @@ public sealed class ActiveMoveCommandTests
             AssignMapDefinition(GridManager, mapDefinition);
             Assert.That(GridManager.RebuildMap(), Is.True);
 
+            Selection = routerObject.AddComponent<SelectionController>();
             InputRouter = routerObject.AddComponent<PlayerCommandRouter>();
+            InputRouter.SelectionController = Selection;
             EventBus = managerObject.AddComponent<CombatEventBus>();
             Manager = managerObject.AddComponent<CombatManager>();
             Manager.Configure(Registry, GridManager, InputRouter, EventBus);
@@ -177,6 +206,8 @@ public sealed class ActiveMoveCommandTests
         public UnitRegistry Registry { get; }
 
         public GridManager GridManager { get; }
+
+        public SelectionController Selection { get; }
 
         public PlayerCommandRouter InputRouter { get; }
 

@@ -362,6 +362,7 @@ namespace ReactionTactics.Turns
             }
 
             currentState.SetState(currentState.CurrentRound, CombatPhase.ActiveTurn, command.Unit, null, null);
+            PresentActiveMove(command);
             LogActiveMove(command, previousPosition, previousAP);
             return TacticalResult.Success();
         }
@@ -735,6 +736,26 @@ namespace ReactionTactics.Turns
                 Debug.LogWarning(
                     $"{nameof(CombatManager)} rejected active action command {request.CommandType}: {actionResult.ErrorMessage}",
                     this);
+                return;
+            }
+
+            if (request.CommandType == PlayerCommandType.ConfirmTarget
+                && request.ActionMode == SelectionActionMode.Move)
+            {
+                if (!request.HasTarget || request.Target.Kind != SelectionTargetKind.Cell)
+                {
+                    Debug.LogWarning($"{nameof(CombatManager)} could not active move: active movement requires a target cell.", this);
+                    return;
+                }
+
+                var moveResult = MoveActiveUnit(request.Unit, request.Target.Cell);
+                if (moveResult.IsFailure)
+                {
+                    Debug.LogWarning($"{nameof(CombatManager)} could not active move: {moveResult.ErrorMessage}", this);
+                    return;
+                }
+
+                ClearCompletedActiveMoveSelection(request.Unit);
                 return;
             }
 
@@ -1199,6 +1220,38 @@ namespace ReactionTactics.Turns
                 this);
         }
 
+        private void PresentActiveMove(ActiveMoveCommand command)
+        {
+            if (command.Unit == null || gridManager == null)
+            {
+                return;
+            }
+
+            var metrics = gridManager.Metrics;
+            var mover = command.Unit.GetComponent<GridPathMover>();
+            if (mover != null)
+            {
+                mover.Metrics = metrics;
+                if (Application.isPlaying && mover.isActiveAndEnabled && mover.gameObject.activeInHierarchy)
+                {
+                    if (mover.IsMoving)
+                    {
+                        mover.StopMovement();
+                    }
+
+                    mover.MoveAlongPath(command.Path, metrics);
+                }
+                else
+                {
+                    mover.SnapTo(command.Destination, metrics);
+                }
+
+                return;
+            }
+
+            command.Unit.transform.position = metrics.GridToWorldCenter(command.Destination);
+        }
+
         private void LogActiveMove(ActiveMoveCommand command, GridPosition previousPosition, int previousAP)
         {
             if (!logActionFlow)
@@ -1309,6 +1362,25 @@ namespace ReactionTactics.Turns
             if (currentState.ActiveUnit != null && currentState.ActiveUnit.IsAlive)
             {
                 selectionController.SelectUnit(currentState.ActiveUnit);
+            }
+        }
+
+        private void ClearCompletedActiveMoveSelection(TacticalUnit movedUnit)
+        {
+            var selectionController = inputRouter != null ? inputRouter.SelectionController : null;
+            if (selectionController == null)
+            {
+                return;
+            }
+
+            if (selectionController.SelectedActionMode == SelectionActionMode.Move)
+            {
+                selectionController.ClearActionMode();
+            }
+
+            if (movedUnit != null && movedUnit.IsAlive)
+            {
+                selectionController.SelectUnit(movedUnit);
             }
         }
 

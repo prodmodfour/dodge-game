@@ -933,6 +933,7 @@ GameObject:
   m_Component:
   - component: {fileID: 914327698}
   - component: {fileID: 914327699}
+  - component: {fileID: 914327700}
   m_Layer: 0
   m_Name: Grid
   m_TagString: Untagged
@@ -980,6 +981,32 @@ MonoBehaviour:
   walkableColor: {r: 0.38, g: 0.62, b: 0.36, a: 1}
   blockedColor: {r: 0.33, g: 0.28, b: 0.25, a: 1}
   lineOfSightBlockerColor: {r: 0.46, g: 0.22, b: 0.68, a: 1}
+--- !u!114 &914327700
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 914327697}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fd81f2fd1610b23c8cbb449ea8f7054, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Grid.GridHighlightManager
+  terrainView: {fileID: 914327699}
+  rebuildIndexFromSceneWhenMissing: 1
+  movementRangeMaterial: {fileID: 0}
+  selectedPathMaterial: {fileID: 0}
+  actionDangerMaterial: {fileID: 0}
+  reactionSafeMaterial: {fileID: 0}
+  reactionThreatenedMaterial: {fileID: 0}
+  targetCellMaterial: {fileID: 0}
+  movementRangeColor: {r: 0.25, g: 0.65, b: 1, a: 1}
+  selectedPathColor: {r: 1, g: 0.92, b: 0.25, a: 1}
+  actionDangerColor: {r: 1, g: 0.2, b: 0.12, a: 1}
+  reactionSafeColor: {r: 0.2, g: 0.95, b: 0.45, a: 1}
+  reactionThreatenedColor: {r: 1, g: 0.48, b: 0.08, a: 1}
+  targetCellColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &939795849
 GameObject:
   m_ObjectHideFlags: 0
@@ -1083,6 +1110,7 @@ GameObject:
   - component: {fileID: 1047836513}
   - component: {fileID: 1047836514}
   - component: {fileID: 1047836515}
+  - component: {fileID: 1047836516}
   m_Layer: 0
   m_Name: UI
   m_TagString: Untagged
@@ -1204,6 +1232,32 @@ MonoBehaviour:
     height: 210
   panelTitle: Reaction Menu
   showDisabledReasons: 1
+--- !u!114 &1047836516
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047836510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ea6670caba76ffdbaff0fee268c5848, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.ActiveMovementPreviewController
+  selectionController: {fileID: 1092979094}
+  combatManager: {fileID: 1092979095}
+  gridManager: {fileID: 1092979091}
+  unitRegistry: {fileID: 1494555728}
+  highlightManager: {fileID: 914327700}
+  visible: 1
+  includeStartCellInRange: 1
+  panelRect:
+    serializedVersion: 2
+    x: 12
+    y: 560
+    width: 360
+    height: 92
+  panelTitle: Move Preview
 --- !u!1 &1092979089
 GameObject:
   m_ObjectHideFlags: 0

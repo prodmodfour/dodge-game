@@ -3321,7 +3321,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 113 — Show active movement range
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: show active movement range`
 
