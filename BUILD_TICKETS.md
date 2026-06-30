@@ -618,7 +618,7 @@ unity-ctrl --project "$PWD" test --filter GridMetricsTests
 
 ## 020 — Add core model tests
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: cover core grid and identity models`
 
