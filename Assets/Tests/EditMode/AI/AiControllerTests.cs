@@ -37,7 +37,7 @@ namespace ReactionTactics.Tests.EditMode.AI
         }
 
         [Test]
-        public void EnemyReactionDelegatesToAiPassAndResolvesPendingActionWithoutInput()
+        public void EnemyReactionDelegatesToAiMoveAndResolvesPendingActionWithoutInput()
         {
             using (var fixture = new Fixture(includeAi: true, includeMap: true))
             {
@@ -47,17 +47,23 @@ namespace ReactionTactics.Tests.EditMode.AI
 
                 Assert.That(fixture.Manager.StartCombat().IsSuccess, Is.True);
 
+                var start = enemyReactor.CurrentGridPosition;
+                var apBeforeReaction = enemyReactor.CurrentAP;
                 Assert.That(fixture.InputRouter.SelectUnit(actor).IsSuccess, Is.True);
                 Assert.That(fixture.InputRouter.SelectMeleeAttack().IsSuccess, Is.True);
                 var confirmResult = fixture.InputRouter.ConfirmTargetUnit(enemyReactor);
 
                 Assert.That(confirmResult.IsSuccess, Is.True, confirmResult.ErrorMessage);
+                Assert.That(enemyReactor.CurrentGridPosition, Is.EqualTo(new GridPosition(2, 0, 0)));
+                Assert.That(enemyReactor.CurrentAP, Is.EqualTo(apBeforeReaction - 1));
+                Assert.That(fixture.Registry.IsOccupied(start), Is.False);
+                Assert.That(fixture.Registry.IsOccupied(enemyReactor.CurrentGridPosition), Is.True);
                 Assert.That(fixture.Manager.CurrentReactionWindow, Is.Null);
                 Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ActiveTurn));
                 Assert.That(fixture.Manager.CurrentState.ActiveUnit, Is.SameAs(actor));
                 Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.Null);
                 Assert.That(fixture.Manager.CurrentState.PendingActionIntent, Is.Null);
-                Assert.That(enemyReactor.CurrentHP, Is.EqualTo(enemyReactor.MaxHP - fixture.MeleeSlash.Damage));
+                Assert.That(enemyReactor.CurrentHP, Is.EqualTo(enemyReactor.MaxHP));
             }
         }
 
@@ -105,8 +111,8 @@ namespace ReactionTactics.Tests.EditMode.AI
                 {
                     mapDefinition = ScriptableObject.CreateInstance<GridMapDefinition>();
                     mapDefinition.Configure(
-                        width: 3,
-                        depth: 2,
+                        width: 4,
+                        depth: 1,
                         defaultHeightY: 0,
                         overrides: Array.Empty<GridMapDefinition.CellOverride>());
                     AssignMapDefinition(GridManager, mapDefinition);

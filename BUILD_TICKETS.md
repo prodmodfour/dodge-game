@@ -3698,7 +3698,7 @@ unity-ctrl --project "$PWD" test --filter AiAoeActionTests
 
 ## 126 — Implement AI reaction movement
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: let ai move out of danger as reaction`
 

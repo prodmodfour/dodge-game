@@ -5,6 +5,7 @@ using ReactionTactics.Core;
 using ReactionTactics.Grid;
 using ReactionTactics.Input;
 using ReactionTactics.Pathfinding;
+using ReactionTactics.Reactions;
 using ReactionTactics.Targeting;
 using ReactionTactics.Turns;
 using ReactionTactics.Units;
@@ -89,10 +90,10 @@ namespace ReactionTactics.AI
     }
 
     /// <summary>
-    /// Deterministic shell controller for prototype enemy units. It exposes stable
-    /// target selection, declares adjacent melee attacks, declares valuable cone
-    /// shots and radius AoEs, advances active units toward targets when no attack
-    /// currently validates, and still passes reaction turns until reaction-specific AI tickets are implemented.
+    /// Deterministic controller for prototype enemy units. It exposes stable target
+    /// selection, declares adjacent melee attacks, declares valuable cone shots and
+    /// radius AoEs, advances active units toward targets when no attack currently
+    /// validates, and reaction-moves out of pending danger when a safe destination exists.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class AiController : MonoBehaviour
@@ -391,6 +392,104 @@ namespace ReactionTactics.AI
             }
 
             return TacticalResult<GridPosition>.Success(bestCell.Position);
+        }
+
+        /// <summary>
+        /// Chooses a safe reaction-move destination when the controlled reactor is
+        /// currently threatened by the pending action. The start cell is included in
+        /// safety analysis to decide whether AP should be conserved; when movement is
+        /// needed, the AI chooses the lowest-cost safe destination and uses nearest
+        /// hostile distance plus stable grid ordering as deterministic tie-breakers.
+        /// </summary>
+        public TacticalResult<ReactionSafetyCell> TryChooseReactionMoveDestination(
+            TacticalUnit reactor,
+            ActionIntent pendingIntent,
+            IGridMap map,
+            IGridOccupancy occupancy,
+            IEnumerable<TacticalUnit> candidates)
+        {
+            var contextResult = ValidateReactionMoveChoiceContext(reactor, pendingIntent, map);
+            if (contextResult.IsFailure)
+            {
+                return TacticalResult<ReactionSafetyCell>.Failure(contextResult.ErrorMessage);
+            }
+
+            IReadOnlyDictionary<GridPosition, ReachableCell> reachableCells;
+            try
+            {
+                reachableCells = new ReachableCellSearch().FindReachableCells(
+                    map,
+                    reactor.CurrentGridPosition,
+                    reactor.CurrentAP,
+                    occupancy);
+            }
+            catch (ArgumentException exception)
+            {
+                return TacticalResult<ReactionSafetyCell>.Failure(
+                    $"{DescribeUnit(reactor)} cannot evaluate reaction movement: {exception.Message}");
+            }
+            catch (InvalidOperationException exception)
+            {
+                return TacticalResult<ReactionSafetyCell>.Failure(
+                    $"{DescribeUnit(reactor)} cannot evaluate reaction movement: {exception.Message}");
+            }
+
+            var safetyCells = new ReactionSafetyAnalyzer().ClassifyReachableCells(
+                reactor,
+                pendingIntent,
+                reachableCells.Values);
+            var hasCurrentSafety = false;
+            var currentSafety = default(ReactionSafetyCell);
+            for (var i = 0; i < safetyCells.Count; i += 1)
+            {
+                if (safetyCells[i].Position != reactor.CurrentGridPosition)
+                {
+                    continue;
+                }
+
+                hasCurrentSafety = true;
+                currentSafety = safetyCells[i];
+                break;
+            }
+
+            if (!hasCurrentSafety)
+            {
+                return TacticalResult<ReactionSafetyCell>.Failure(
+                    $"{DescribeUnit(reactor)} cannot evaluate reaction movement because its current cell {reactor.CurrentGridPosition} was not included in reachable cells.");
+            }
+
+            if (currentSafety.IsSafe)
+            {
+                return TacticalResult<ReactionSafetyCell>.Failure(
+                    $"{DescribeUnit(reactor)} is not currently threatened by {pendingIntent.Ability.DisplayName}; conserve AP and pass. {currentSafety.Reason}");
+            }
+
+            var nearestHostile = candidates == null ? null : SelectNearestHostileTarget(reactor, candidates);
+            var hasBestCell = false;
+            var bestCell = default(ReactionSafetyCell);
+            for (var i = 0; i < safetyCells.Count; i += 1)
+            {
+                var safetyCell = safetyCells[i];
+                if (!safetyCell.IsSafe || safetyCell.Position == reactor.CurrentGridPosition)
+                {
+                    continue;
+                }
+
+                if (!hasBestCell
+                    || CompareReactionMoveDestination(reactor, nearestHostile, safetyCell, bestCell) < 0)
+                {
+                    hasBestCell = true;
+                    bestCell = safetyCell;
+                }
+            }
+
+            if (!hasBestCell)
+            {
+                return TacticalResult<ReactionSafetyCell>.Failure(
+                    $"{DescribeUnit(reactor)} is threatened by {pendingIntent.Ability.DisplayName} at {reactor.CurrentGridPosition}, but no reachable safe reaction-move destination exists.");
+            }
+
+            return TacticalResult<ReactionSafetyCell>.Success(bestCell);
         }
 
         public bool HasValidActiveAttackAvailable(
@@ -780,7 +879,9 @@ namespace ReactionTactics.AI
         }
 
         /// <summary>
-        /// Initial reaction AI behavior: pass the controlled unit's current reaction turn.
+        /// Reaction AI behavior: move out of the pending action's threatened cells when
+        /// the controlled reactor is currently threatened and a safe reachable cell exists;
+        /// otherwise conserve AP and pass.
         /// </summary>
         public TacticalResult TakeReactionTurn(ActionIntent sourceIntent, TacticalUnit reactor)
         {
@@ -788,7 +889,9 @@ namespace ReactionTactics.AI
         }
 
         /// <summary>
-        /// Initial reaction AI behavior: pass the controlled unit's current reaction turn.
+        /// Reaction AI behavior: move out of the pending action's threatened cells when
+        /// the controlled reactor is currently threatened and a safe reachable cell exists;
+        /// otherwise conserve AP and pass.
         /// </summary>
         public TacticalResult TakeReactionTurn(
             CombatManager manager,
@@ -801,7 +904,18 @@ namespace ReactionTactics.AI
                 return validation;
             }
 
-            LogDecision($"AI controlling {reactor.DisplayName} {reactor.UnitId} [{reactor.Team}] passed reaction to {sourceIntent.Ability.DisplayName}.");
+            var movementResult = TryMoveOutOfPendingDanger(manager, sourceIntent, reactor);
+            if (movementResult.IsFailure)
+            {
+                return TacticalResult.Failure(movementResult.ErrorMessage);
+            }
+
+            if (movementResult.Value)
+            {
+                return TacticalResult.Success();
+            }
+
+            LogDecision($"AI controlling {reactor.DisplayName} {reactor.UnitId} [{reactor.Team}] passed reaction to {sourceIntent.Ability.DisplayName} to conserve AP.");
             return manager.PassCurrentReaction(reactor);
         }
 
@@ -907,6 +1021,50 @@ namespace ReactionTactics.AI
 
             LogDecision(
                 $"AI moved {DescribeUnit(activeUnit)} from {start} to {destination} toward {DescribeUnit(target)}; AP {apBeforeMove}->{activeUnit.CurrentAP}, reserve target {reactionApReserve}.");
+            return TacticalResult<bool>.Success(true);
+        }
+
+        private TacticalResult<bool> TryMoveOutOfPendingDanger(
+            CombatManager manager,
+            ActionIntent sourceIntent,
+            TacticalUnit reactor)
+        {
+            if (manager.UnitRegistry == null)
+            {
+                LogDecision($"AI could not evaluate reaction movement for {DescribeUnit(reactor)} because no unit registry is assigned.");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var mapResult = ResolveCurrentMap(manager);
+            if (mapResult.IsFailure)
+            {
+                LogDecision($"AI could not evaluate reaction movement for {DescribeUnit(reactor)}: {mapResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var choiceResult = TryChooseReactionMoveDestination(
+                reactor,
+                sourceIntent,
+                mapResult.Value,
+                manager.UnitRegistry,
+                manager.UnitRegistry.GetLivingUnits());
+            if (choiceResult.IsFailure)
+            {
+                LogDecision($"AI found no reaction move for {DescribeUnit(reactor)} responding to {sourceIntent.Ability.DisplayName}: {choiceResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var choice = choiceResult.Value;
+            var previousPosition = reactor.CurrentGridPosition;
+            var previousAP = reactor.CurrentAP;
+            var moveResult = manager.MoveCurrentReaction(reactor, choice.Position);
+            if (moveResult.IsFailure)
+            {
+                return TacticalResult<bool>.Failure(moveResult.ErrorMessage);
+            }
+
+            LogDecision(
+                $"AI reaction-moved {DescribeUnit(reactor)} from {previousPosition} to {choice.Position} responding to {sourceIntent.Ability.DisplayName}; AP {previousAP}->{reactor.CurrentAP}. {choice.Reason}");
             return TacticalResult<bool>.Success(true);
         }
 
@@ -1412,6 +1570,44 @@ namespace ReactionTactics.AI
             return TacticalResult.Success();
         }
 
+        private static TacticalResult ValidateReactionMoveChoiceContext(
+            TacticalUnit reactor,
+            ActionIntent pendingIntent,
+            IGridMap map)
+        {
+            if (reactor == null)
+            {
+                return TacticalResult.Failure("Cannot choose an AI reaction move because no reacting unit was provided.");
+            }
+
+            if (pendingIntent == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI reaction move for {DescribeUnit(reactor)} because no pending action intent was provided.");
+            }
+
+            if (map == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI reaction move for {DescribeUnit(reactor)} because no grid map is available.");
+            }
+
+            if (!reactor.IsAlive)
+            {
+                return TacticalResult.Failure($"{DescribeUnit(reactor)} cannot choose an AI reaction move because it is defeated.");
+            }
+
+            if (reactor.CurrentAP <= 0)
+            {
+                return TacticalResult.Failure($"{DescribeUnit(reactor)} cannot choose an AI reaction move because it has 0 AP.");
+            }
+
+            if (!map.TryGetCell(reactor.CurrentGridPosition, out _))
+            {
+                return TacticalResult.Failure($"{DescribeUnit(reactor)} cannot choose an AI reaction move because its current cell {reactor.CurrentGridPosition} is not on the map.");
+            }
+
+            return TacticalResult.Success();
+        }
+
         private static bool IsAttackAbility(AbilityDefinition ability)
         {
             return ability != null
@@ -1682,6 +1878,47 @@ namespace ReactionTactics.AI
             if (costComparison != 0)
             {
                 return costComparison;
+            }
+
+            return CompareGridPositions(left.Position, right.Position);
+        }
+
+        private int CompareReactionMoveDestination(
+            TacticalUnit reactor,
+            TacticalUnit nearestHostile,
+            ReactionSafetyCell left,
+            ReactionSafetyCell right)
+        {
+            var costComparison = left.TotalApCost.CompareTo(right.TotalApCost);
+            if (costComparison != 0)
+            {
+                return costComparison;
+            }
+
+            if (nearestHostile != null)
+            {
+                var leftDistance = left.Position.TacticalDistanceTo(
+                    nearestHostile.CurrentGridPosition,
+                    targetSelectionVerticalWeight);
+                var rightDistance = right.Position.TacticalDistanceTo(
+                    nearestHostile.CurrentGridPosition,
+                    targetSelectionVerticalWeight);
+                var distanceComparison = leftDistance.CompareTo(rightDistance);
+                if (distanceComparison != 0)
+                {
+                    return distanceComparison;
+                }
+            }
+
+            if (reactor != null)
+            {
+                var leftDisplacement = reactor.CurrentGridPosition.HorizontalDistanceTo(left.Position);
+                var rightDisplacement = reactor.CurrentGridPosition.HorizontalDistanceTo(right.Position);
+                var displacementComparison = leftDisplacement.CompareTo(rightDisplacement);
+                if (displacementComparison != 0)
+                {
+                    return displacementComparison;
+                }
             }
 
             return CompareGridPositions(left.Position, right.Position);
