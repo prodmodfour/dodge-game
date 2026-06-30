@@ -124,6 +124,11 @@ namespace ReactionTactics.Turns
             this.unitRegistry = unitRegistry;
             this.gridManager = gridManager;
             this.inputRouter = inputRouter;
+            if (this.inputRouter != null)
+            {
+                this.inputRouter.CombatManager = this;
+            }
+
             this.eventBus = eventBus;
 
             if (isActiveAndEnabled)
@@ -598,6 +603,11 @@ namespace ReactionTactics.Turns
                 inputRouter = FindAnyObjectByType<PlayerCommandRouter>();
             }
 
+            if (inputRouter != null && inputRouter.CombatManager == null)
+            {
+                inputRouter.CombatManager = this;
+            }
+
             if (eventBus == null)
             {
                 eventBus = GetComponent<CombatEventBus>();
@@ -854,6 +864,7 @@ namespace ReactionTactics.Turns
                     continue;
                 }
 
+                FocusInputOnCurrentReactor(reactor);
                 LogReactionAwaitingPass(intent, reactor, eligibility);
                 return TacticalResult.Success();
             }
@@ -887,6 +898,23 @@ namespace ReactionTactics.Turns
             return TacticalResult.Success();
         }
 
+        private void FocusInputOnCurrentReactor(TacticalUnit reactor)
+        {
+            if (inputRouter == null || reactor == null)
+            {
+                return;
+            }
+
+            inputRouter.CombatManager = this;
+            var focusResult = inputRouter.FocusCurrentReactorSelection();
+            if (focusResult.IsFailure && logActionFlow)
+            {
+                Debug.LogWarning(
+                    $"{nameof(CombatManager)} could not focus current reactor {DescribeUnit(reactor)} for input: {focusResult.ErrorMessage}",
+                    this);
+            }
+        }
+
         private void SubscribeToInputRouter()
         {
             if (inputRouter == null)
@@ -901,6 +929,7 @@ namespace ReactionTactics.Turns
 
             UnsubscribeFromInputRouter();
             subscribedInputRouter = inputRouter;
+            subscribedInputRouter.CombatManager = this;
             subscribedInputRouter.CommandRequested += HandleCommandRequested;
         }
 
@@ -1222,6 +1251,10 @@ namespace ReactionTactics.Turns
             }
 
             selectionController.ClearActionMode();
+            if (currentState.ActiveUnit != null && currentState.ActiveUnit.IsAlive)
+            {
+                selectionController.SelectUnit(currentState.ActiveUnit);
+            }
         }
 
         private static bool IsActiveActionMode(SelectionActionMode actionMode)

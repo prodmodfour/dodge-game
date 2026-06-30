@@ -3086,7 +3086,7 @@ unity-ctrl --project "$PWD" test --filter NoNestedReactionWindowTests
 
 ## 105 — Add reaction UI state integration
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: expose current reactor to input and ui`
 

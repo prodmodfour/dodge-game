@@ -1,6 +1,7 @@
 using System;
 using ReactionTactics.Core;
 using ReactionTactics.Grid;
+using ReactionTactics.Turns;
 using ReactionTactics.Units;
 using UnityEngine;
 
@@ -21,6 +22,10 @@ namespace ReactionTactics.Input
         [SerializeField]
         [Tooltip("Optional picker whose click events are routed into selection and target requests.")]
         private GridPicker gridPicker;
+
+        [SerializeField]
+        [Tooltip("Optional combat manager used to keep reaction input locked to the current reactor.")]
+        private CombatManager combatManager;
 
         [SerializeField]
         [Tooltip("Poll prototype keyboard shortcuts in Update and route them through the same methods as UI buttons.")]
@@ -95,6 +100,12 @@ namespace ReactionTactics.Input
             }
         }
 
+        public CombatManager CombatManager
+        {
+            get { return combatManager; }
+            set { combatManager = value; }
+        }
+
         public bool LogRoutedCommands
         {
             get { return logRoutedCommands; }
@@ -115,6 +126,12 @@ namespace ReactionTactics.Input
                 return Reject("PlayerCommandRouter requires a SelectionController before selecting units.");
             }
 
+            var reactionSelectionResult = ValidateUnitCanBeSelectedDuringReaction(unit);
+            if (reactionSelectionResult.IsFailure)
+            {
+                return Reject(reactionSelectionResult);
+            }
+
             var result = controller.SelectUnit(unit);
             if (result.IsFailure)
             {
@@ -126,6 +143,11 @@ namespace ReactionTactics.Input
 
         public TacticalResult SelectMove()
         {
+            if (IsReactionControlActive())
+            {
+                return SelectReactionMode(SelectionActionMode.Move);
+            }
+
             if (!TryGetControllerWithSelectedUnit(out var controller, out var failure))
             {
                 return Reject(failure);
@@ -145,6 +167,13 @@ namespace ReactionTactics.Input
             if (!IsAttackMode(attackMode))
             {
                 return Reject($"'{attackMode}' is not a selectable attack mode.");
+            }
+
+            if (IsReactionControlActive())
+            {
+                return Reject(
+                    $"Cannot select active attack '{attackMode}' during a reaction turn. "
+                    + $"Only the current reactor {DescribeUnit(GetCurrentReactor())} may choose reaction movement, Brace, Pass, or Cancel.");
             }
 
             if (!TryGetControllerWithSelectedUnit(out var controller, out var failure))
@@ -178,6 +207,18 @@ namespace ReactionTactics.Input
 
         public TacticalResult SelectBraceReaction()
         {
+            if (IsReactionControlActive())
+            {
+                return SelectReactionMode(SelectionActionMode.Brace);
+            }
+
+            if (combatManager != null
+                && combatManager.CurrentState != null
+                && combatManager.CurrentState.Phase != CombatPhase.NotStarted)
+            {
+                return Reject("Brace can only be selected during the current unit's reaction turn.");
+            }
+
             if (!TryGetControllerWithSelectedUnit(out var controller, out var failure))
             {
                 return Reject(failure);
@@ -230,6 +271,15 @@ namespace ReactionTactics.Input
 
         public TacticalResult ConfirmTarget(SelectionTarget target)
         {
+            if (IsReactionControlActive())
+            {
+                var focusResult = FocusCurrentReactorSelection();
+                if (focusResult.IsFailure)
+                {
+                    return Reject(focusResult);
+                }
+            }
+
             if (!TryGetControllerWithSelectedUnit(out var controller, out var failure))
             {
                 return Reject(failure);
@@ -260,7 +310,9 @@ namespace ReactionTactics.Input
                 return Reject(result);
             }
 
-            return Route(PlayerCommandType.ConfirmTarget, controller.CurrentState);
+            return Route(
+                IsReactionControlActive() ? PlayerCommandType.SelectReaction : PlayerCommandType.ConfirmTarget,
+                controller.CurrentState);
         }
 
         public TacticalResult Cancel()
@@ -284,12 +336,30 @@ namespace ReactionTactics.Input
 
         public TacticalResult RequestEndTurn()
         {
+            if (IsReactionControlActive())
+            {
+                var focusResult = FocusCurrentReactorSelection();
+                if (focusResult.IsFailure)
+                {
+                    return Reject(focusResult);
+                }
+            }
+
             var controller = ResolveSelectionController();
             return Route(PlayerCommandType.EndTurn, controller != null ? controller.CurrentState : SelectionState.Empty);
         }
 
         public TacticalResult RequestPassReaction()
         {
+            if (IsReactionControlActive())
+            {
+                var focusResult = FocusCurrentReactorSelection();
+                if (focusResult.IsFailure)
+                {
+                    return Reject(focusResult);
+                }
+            }
+
             var controller = ResolveSelectionController();
             return Route(PlayerCommandType.PassReaction, controller != null ? controller.CurrentState : SelectionState.Empty);
         }
@@ -297,6 +367,27 @@ namespace ReactionTactics.Input
         public TacticalResult RequestPassOrEndTurn()
         {
             return RequestEndTurn();
+        }
+
+        /// <summary>
+        /// Updates selection to the current reactor without emitting a player command.
+        /// Combat flow uses this when a reaction turn starts so UI and hotkeys point at
+        /// the unit that is legally allowed to react.
+        /// </summary>
+        public TacticalResult FocusCurrentReactorSelection()
+        {
+            if (!TryGetCurrentReactor(out var reactor, out var failure))
+            {
+                return failure;
+            }
+
+            var controller = ResolveSelectionController();
+            if (controller == null)
+            {
+                return TacticalResult.Failure("PlayerCommandRouter requires a SelectionController before focusing the current reactor.");
+            }
+
+            return controller.SelectUnit(reactor);
         }
 
         public TacticalResult RouteKeyboardShortcut(KeyCode keyCode)
@@ -348,6 +439,7 @@ namespace ReactionTactics.Input
         {
             ResolveSelectionController();
             ResolveGridPicker();
+            ResolveCombatManager();
             SubscribeToPicker();
         }
 
@@ -379,6 +471,7 @@ namespace ReactionTactics.Input
         {
             selectionController = FindAnyObjectByType<SelectionController>();
             gridPicker = FindAnyObjectByType<GridPicker>();
+            combatManager = FindAnyObjectByType<CombatManager>();
             keyboardShortcutsEnabled = true;
             moveShortcut = KeyCode.M;
             meleeShortcut = KeyCode.Alpha1;
@@ -395,6 +488,26 @@ namespace ReactionTactics.Input
             if (result.Unit == null)
             {
                 Reject("Clicked unit result did not contain a tactical unit.");
+                return;
+            }
+
+            if (IsReactionControlActive())
+            {
+                if (!TryGetCurrentReactor(out var reactor, out var failure))
+                {
+                    Reject(failure);
+                    return;
+                }
+
+                if (!ReferenceEquals(result.Unit, reactor))
+                {
+                    Reject(
+                        $"Cannot select {DescribeUnit(result.Unit)} during this reaction turn. "
+                        + $"Only current reactor {DescribeUnit(reactor)} may react now.");
+                    return;
+                }
+
+                SelectUnit(reactor);
                 return;
             }
 
@@ -424,6 +537,89 @@ namespace ReactionTactics.Input
             }
 
             ConfirmTargetCell(result.Position);
+        }
+
+        private TacticalResult SelectReactionMode(SelectionActionMode reactionMode)
+        {
+            if (!TryGetCurrentReactor(out var reactor, out var failure))
+            {
+                return Reject(failure);
+            }
+
+            var controller = ResolveSelectionController();
+            if (controller == null)
+            {
+                return Reject("PlayerCommandRouter requires a SelectionController before routing reaction commands.");
+            }
+
+            var selectResult = controller.SelectUnit(reactor);
+            if (selectResult.IsFailure)
+            {
+                return Reject(selectResult);
+            }
+
+            var modeResult = controller.SetActionMode(reactionMode);
+            if (modeResult.IsFailure)
+            {
+                return Reject(modeResult);
+            }
+
+            return Route(PlayerCommandType.SelectReaction, controller.CurrentState);
+        }
+
+        private TacticalResult ValidateUnitCanBeSelectedDuringReaction(TacticalUnit unit)
+        {
+            if (!IsReactionControlActive())
+            {
+                return TacticalResult.Success();
+            }
+
+            if (!TryGetCurrentReactor(out var reactor, out var failure))
+            {
+                return failure;
+            }
+
+            if (!ReferenceEquals(unit, reactor))
+            {
+                return TacticalResult.Failure(
+                    $"Cannot select {DescribeUnit(unit)} during this reaction turn. "
+                    + $"Only current reactor {DescribeUnit(reactor)} may react now.");
+            }
+
+            return TacticalResult.Success();
+        }
+
+        private bool IsReactionControlActive()
+        {
+            var manager = ResolveCombatManager();
+            return manager != null
+                && manager.CurrentState != null
+                && manager.CurrentState.IsReactionPhase;
+        }
+
+        private bool TryGetCurrentReactor(out TacticalUnit reactor, out TacticalResult failure)
+        {
+            reactor = GetCurrentReactor();
+            if (reactor == null)
+            {
+                failure = TacticalResult.Failure("No current reactor is available for this reaction command.");
+                return false;
+            }
+
+            if (!reactor.IsAlive)
+            {
+                failure = TacticalResult.Failure($"Current reactor {DescribeUnit(reactor)} is defeated and cannot react.");
+                return false;
+            }
+
+            failure = TacticalResult.Success();
+            return true;
+        }
+
+        private TacticalUnit GetCurrentReactor()
+        {
+            var manager = ResolveCombatManager();
+            return manager != null && manager.CurrentState != null ? manager.CurrentState.CurrentReactor : null;
         }
 
         private bool TryGetControllerWithSelectedUnit(out SelectionController controller, out TacticalResult failure)
@@ -501,6 +697,16 @@ namespace ReactionTactics.Input
             return gridPicker;
         }
 
+        private CombatManager ResolveCombatManager()
+        {
+            if (combatManager == null)
+            {
+                combatManager = FindAnyObjectByType<CombatManager>();
+            }
+
+            return combatManager;
+        }
+
         private bool TryRoutePressedShortcut(KeyCode shortcut)
         {
             if (shortcut == KeyCode.None || !UnityEngine.Input.GetKeyDown(shortcut))
@@ -541,6 +747,16 @@ namespace ReactionTactics.Input
             return actionMode == SelectionActionMode.Melee
                 || actionMode == SelectionActionMode.Cone
                 || actionMode == SelectionActionMode.AreaOfEffect;
+        }
+
+        private static string DescribeUnit(TacticalUnit unit)
+        {
+            if (unit == null)
+            {
+                return "no unit";
+            }
+
+            return unit.IsInitialized ? $"{unit.DisplayName} {unit.UnitId}" : unit.DisplayName;
         }
     }
 }

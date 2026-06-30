@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using ReactionTactics.Grid;
 using ReactionTactics.Input;
+using ReactionTactics.Turns;
 using ReactionTactics.Units;
 using UnityEngine;
 
@@ -271,6 +272,70 @@ namespace ReactionTactics.Tests.EditMode.Input
                 UnityEngine.Object.DestroyImmediate(selectionObject);
                 UnityEngine.Object.DestroyImmediate(stats);
                 fixture.Destroy();
+            }
+        }
+
+        [Test]
+        public void ReactionPhaseCommandsUseCurrentReactorAndRejectOutOfOrderSelection()
+        {
+            var selectionObject = new GameObject("Reaction Selection Controller");
+            var routerObject = new GameObject("Reaction Player Command Router");
+            var managerObject = new GameObject("Reaction Combat Manager");
+            var actorObject = new GameObject("Reaction Actor");
+            var reactorObject = new GameObject("Current Reactor");
+            var otherObject = new GameObject("Out Of Order Reactor");
+            var stats = CreateStats("Reaction Unit");
+            var requests = new List<PlayerCommandRequest>();
+            var rejections = new List<string>();
+
+            try
+            {
+                managerObject.SetActive(false);
+                var selection = selectionObject.AddComponent<SelectionController>();
+                var router = routerObject.AddComponent<PlayerCommandRouter>();
+                var manager = managerObject.AddComponent<CombatManager>();
+                var actor = CreateUnit(actorObject, new UnitId(10), TeamId.Player, stats, GridPosition.Zero);
+                var reactor = CreateUnit(reactorObject, new UnitId(11), TeamId.Enemy, stats, new GridPosition(1, 0, 0));
+                var other = CreateUnit(otherObject, new UnitId(12), TeamId.Enemy, stats, new GridPosition(2, 0, 0));
+                router.SelectionController = selection;
+                router.CombatManager = manager;
+                router.CommandRequested += requests.Add;
+                router.CommandRejected += result => rejections.Add(result.ErrorMessage);
+                manager.CurrentState.SetState(1, CombatPhase.ReactionWindow, actor, reactor, new object());
+
+                var rejectedSelection = router.SelectUnit(other);
+                var moveResult = router.SelectMove();
+                var braceResult = router.SelectBraceReaction();
+                var passResult = router.RequestPassReaction();
+                var passOrEndResult = router.RequestEndTurn();
+
+                Assert.That(rejectedSelection.IsFailure, Is.True);
+                Assert.That(rejections[0], Does.Contain("Only current reactor"));
+                Assert.That(moveResult.IsSuccess, Is.True);
+                Assert.That(braceResult.IsSuccess, Is.True);
+                Assert.That(passResult.IsSuccess, Is.True);
+                Assert.That(passOrEndResult.IsSuccess, Is.True);
+                Assert.That(selection.SelectedUnit, Is.SameAs(reactor));
+                Assert.That(requests[0].CommandType, Is.EqualTo(PlayerCommandType.SelectReaction));
+                Assert.That(requests[0].Unit, Is.SameAs(reactor));
+                Assert.That(requests[0].ActionMode, Is.EqualTo(SelectionActionMode.Move));
+                Assert.That(requests[1].CommandType, Is.EqualTo(PlayerCommandType.SelectReaction));
+                Assert.That(requests[1].Unit, Is.SameAs(reactor));
+                Assert.That(requests[1].ActionMode, Is.EqualTo(SelectionActionMode.Brace));
+                Assert.That(requests[2].CommandType, Is.EqualTo(PlayerCommandType.PassReaction));
+                Assert.That(requests[2].Unit, Is.SameAs(reactor));
+                Assert.That(requests[3].CommandType, Is.EqualTo(PlayerCommandType.EndTurn));
+                Assert.That(requests[3].Unit, Is.SameAs(reactor));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(otherObject);
+                UnityEngine.Object.DestroyImmediate(reactorObject);
+                UnityEngine.Object.DestroyImmediate(actorObject);
+                UnityEngine.Object.DestroyImmediate(managerObject);
+                UnityEngine.Object.DestroyImmediate(routerObject);
+                UnityEngine.Object.DestroyImmediate(selectionObject);
+                UnityEngine.Object.DestroyImmediate(stats);
             }
         }
 

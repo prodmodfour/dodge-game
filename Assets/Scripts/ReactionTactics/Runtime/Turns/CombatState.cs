@@ -34,6 +34,15 @@ namespace ReactionTactics.Turns
         public TacticalUnit ReactingUnit { get; private set; }
 
         /// <summary>
+        /// UI-facing alias for the unit currently allowed to take a reaction command.
+        /// Only this unit may be controlled while <see cref="Phase" /> is <see cref="CombatPhase.ReactionWindow" />.
+        /// </summary>
+        public TacticalUnit CurrentReactor
+        {
+            get { return ReactingUnit; }
+        }
+
+        /// <summary>
         /// Holds the declared action intent while reactions and resolution are pending.
         /// The concrete ActionIntent type is introduced by the ability/action tickets.
         /// </summary>

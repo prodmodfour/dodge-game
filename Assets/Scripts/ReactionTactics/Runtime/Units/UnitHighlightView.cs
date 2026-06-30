@@ -1,19 +1,21 @@
 using ReactionTactics.Turns;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Serialization;
 
 namespace ReactionTactics.Units
 {
     /// <summary>
-    /// Visual-only active-turn marker for a tactical unit. It listens to the scene
-    /// combat event bus and enables a simple ground marker while this unit owns the
-    /// active turn, then clears the marker when control changes or the unit dies.
+    /// Visual-only control markers for a tactical unit. It listens to the scene
+    /// combat event bus and enables one marker while this unit owns the active turn
+    /// and a separate marker while this unit is the current reactor.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(TacticalUnit))]
     public sealed class UnitHighlightView : MonoBehaviour
     {
-        private const string DefaultMarkerName = "ActiveTurnMarker";
+        private const string DefaultActiveMarkerName = "ActiveTurnMarker";
+        private const string DefaultReactionMarkerName = "ReactionTurnMarker";
 
         [SerializeField]
         [Tooltip("Unit represented by this highlight view. Defaults to the TacticalUnit on the same GameObject.")]
@@ -24,9 +26,10 @@ namespace ReactionTactics.Units
         private CombatEventBus eventBus;
 
         [SerializeField]
-        [Tooltip("Optional combat manager used to recover the current active unit when this view is enabled after combat starts.")]
+        [Tooltip("Optional combat manager used to recover the current active unit and current reactor when this view is enabled after combat starts.")]
         private CombatManager combatManager;
 
+        [Header("Active Turn Marker")]
         [SerializeField]
         [Tooltip("Marker transform enabled while this unit is active. If unset, a flat cylinder marker is created at runtime.")]
         private Transform activeMarker;
@@ -40,14 +43,38 @@ namespace ReactionTactics.Units
         private Color activeColor = new Color(1f, 0.88f, 0.05f, 1f);
 
         [SerializeField]
+        [FormerlySerializedAs("markerLocalPosition")]
         [Tooltip("Local offset for the generated active marker, relative to the unit root.")]
-        private Vector3 markerLocalPosition = new Vector3(0f, 0.04f, 0f);
+        private Vector3 activeMarkerLocalPosition = new Vector3(0f, 0.04f, 0f);
 
         [SerializeField]
+        [FormerlySerializedAs("markerLocalScale")]
         [Tooltip("Local scale for the generated active marker. The default is wider than the team marker so it remains visible.")]
-        private Vector3 markerLocalScale = new Vector3(1.15f, 0.025f, 1.15f);
+        private Vector3 activeMarkerLocalScale = new Vector3(1.15f, 0.025f, 1.15f);
 
-        private static Material sharedRuntimeMarkerMaterial;
+        [Header("Reaction Turn Marker")]
+        [SerializeField]
+        [Tooltip("Marker transform enabled while this unit is the current reactor. If unset, a flat cylinder marker is created at runtime.")]
+        private Transform reactionMarker;
+
+        [SerializeField]
+        [Tooltip("Renderer for the reaction marker. If unset, the view uses the renderer on the marker transform.")]
+        private Renderer reactionMarkerRenderer;
+
+        [SerializeField]
+        [Tooltip("World-space color used by the runtime current-reactor marker.")]
+        private Color reactionColor = new Color(0.1f, 0.95f, 1f, 1f);
+
+        [SerializeField]
+        [Tooltip("Local offset for the generated current-reactor marker, relative to the unit root.")]
+        private Vector3 reactionMarkerLocalPosition = new Vector3(0f, 0.075f, 0f);
+
+        [SerializeField]
+        [Tooltip("Local scale for the generated current-reactor marker. The default sits inside the active marker so the two states are visually distinct.")]
+        private Vector3 reactionMarkerLocalScale = new Vector3(0.82f, 0.03f, 0.82f);
+
+        private static Material sharedActiveRuntimeMarkerMaterial;
+        private static Material sharedReactionRuntimeMarkerMaterial;
         private bool isSubscribedToBus;
         private bool isSubscribedToDeath;
 
@@ -61,12 +88,17 @@ namespace ReactionTactics.Units
             get { return activeMarker != null && activeMarker.gameObject.activeSelf; }
         }
 
+        public bool IsReactionHighlighted
+        {
+            get { return reactionMarker != null && reactionMarker.gameObject.activeSelf; }
+        }
+
         /// <summary>
         /// Applies active-turn visual state. Gameplay ownership remains in CombatManager.
         /// </summary>
         public void SetActiveHighlight(bool highlighted)
         {
-            EnsureMarkerExists();
+            EnsureActiveMarkerExists();
 
             var shouldShow = highlighted && tacticalUnit != null && tacticalUnit.IsAlive;
             if (activeMarker != null && activeMarker.gameObject.activeSelf != shouldShow)
@@ -75,11 +107,27 @@ namespace ReactionTactics.Units
             }
         }
 
+        /// <summary>
+        /// Applies current-reactor visual state. Only the current reactor may use reaction commands.
+        /// </summary>
+        public void SetReactionHighlight(bool highlighted)
+        {
+            EnsureReactionMarkerExists();
+
+            var shouldShow = highlighted && tacticalUnit != null && tacticalUnit.IsAlive;
+            if (reactionMarker != null && reactionMarker.gameObject.activeSelf != shouldShow)
+            {
+                reactionMarker.gameObject.SetActive(shouldShow);
+            }
+        }
+
         private void Awake()
         {
             ResolveLocalReferences();
-            EnsureMarkerExists();
+            EnsureActiveMarkerExists();
+            EnsureReactionMarkerExists();
             SetActiveHighlight(false);
+            SetReactionHighlight(false);
         }
 
         private void OnEnable()
@@ -101,7 +149,7 @@ namespace ReactionTactics.Units
         {
             UnsubscribeFromEventBus();
             UnsubscribeFromDeathEvent();
-            HideActiveHighlight();
+            HideAllHighlights();
         }
 
         private void OnDestroy()
@@ -114,8 +162,11 @@ namespace ReactionTactics.Units
         {
             tacticalUnit = GetComponent<TacticalUnit>();
             activeColor = new Color(1f, 0.88f, 0.05f, 1f);
-            markerLocalPosition = new Vector3(0f, 0.04f, 0f);
-            markerLocalScale = new Vector3(1.15f, 0.025f, 1.15f);
+            activeMarkerLocalPosition = new Vector3(0f, 0.04f, 0f);
+            activeMarkerLocalScale = new Vector3(1.15f, 0.025f, 1.15f);
+            reactionColor = new Color(0.1f, 0.95f, 1f, 1f);
+            reactionMarkerLocalPosition = new Vector3(0f, 0.075f, 0f);
+            reactionMarkerLocalScale = new Vector3(0.82f, 0.03f, 0.82f);
         }
 
         private void OnValidate()
@@ -125,11 +176,19 @@ namespace ReactionTactics.Units
                 tacticalUnit = GetComponent<TacticalUnit>();
             }
 
-            markerLocalScale = SanitizeMarkerScale(markerLocalScale);
+            activeMarkerLocalScale = SanitizeMarkerScale(activeMarkerLocalScale);
+            reactionMarkerLocalScale = SanitizeMarkerScale(reactionMarkerLocalScale);
+
             if (activeMarker != null)
             {
-                activeMarker.localPosition = markerLocalPosition;
-                activeMarker.localScale = markerLocalScale;
+                activeMarker.localPosition = activeMarkerLocalPosition;
+                activeMarker.localScale = activeMarkerLocalScale;
+            }
+
+            if (reactionMarker != null)
+            {
+                reactionMarker.localPosition = reactionMarkerLocalPosition;
+                reactionMarker.localScale = reactionMarkerLocalScale;
             }
         }
 
@@ -138,9 +197,19 @@ namespace ReactionTactics.Units
             SetActiveHighlight(ReferenceEquals(eventData.ActiveUnit, tacticalUnit));
         }
 
+        private void HandleReactionTurnStarted(ReactionTurnStartedEvent eventData)
+        {
+            SetReactionHighlight(ReferenceEquals(eventData.Reactor, tacticalUnit));
+        }
+
+        private void HandleActionResolved(ActionResolvedEvent eventData)
+        {
+            SetReactionHighlight(false);
+        }
+
         private void HandleUnitDied(TacticalUnit unit, DamageSource source)
         {
-            HideActiveHighlight();
+            HideAllHighlights();
         }
 
         private void ApplyCurrentCombatState()
@@ -151,6 +220,15 @@ namespace ReactionTactics.Units
             }
 
             SetActiveHighlight(ReferenceEquals(combatManager.CurrentState.ActiveUnit, tacticalUnit));
+            SetReactionHighlight(
+                combatManager.CurrentState.IsReactionPhase
+                && ReferenceEquals(combatManager.CurrentState.CurrentReactor, tacticalUnit));
+        }
+
+        private void HideAllHighlights()
+        {
+            HideActiveHighlight();
+            HideReactionHighlight();
         }
 
         private void HideActiveHighlight()
@@ -158,6 +236,14 @@ namespace ReactionTactics.Units
             if (activeMarker != null && activeMarker.gameObject.activeSelf)
             {
                 activeMarker.gameObject.SetActive(false);
+            }
+        }
+
+        private void HideReactionHighlight()
+        {
+            if (reactionMarker != null && reactionMarker.gameObject.activeSelf)
+            {
+                reactionMarker.gameObject.SetActive(false);
             }
         }
 
@@ -171,6 +257,11 @@ namespace ReactionTactics.Units
             if (activeMarkerRenderer == null && activeMarker != null)
             {
                 activeMarkerRenderer = activeMarker.GetComponent<Renderer>();
+            }
+
+            if (reactionMarkerRenderer == null && reactionMarker != null)
+            {
+                reactionMarkerRenderer = reactionMarker.GetComponent<Renderer>();
             }
 
             ResolveSceneReferences();
@@ -203,6 +294,8 @@ namespace ReactionTactics.Units
             }
 
             eventBus.ActiveUnitChanged += HandleActiveUnitChanged;
+            eventBus.ReactionTurnStarted += HandleReactionTurnStarted;
+            eventBus.ActionResolved += HandleActionResolved;
             isSubscribedToBus = true;
         }
 
@@ -215,6 +308,8 @@ namespace ReactionTactics.Units
             }
 
             eventBus.ActiveUnitChanged -= HandleActiveUnitChanged;
+            eventBus.ReactionTurnStarted -= HandleReactionTurnStarted;
+            eventBus.ActionResolved -= HandleActionResolved;
             isSubscribedToBus = false;
         }
 
@@ -241,45 +336,79 @@ namespace ReactionTactics.Units
             isSubscribedToDeath = false;
         }
 
-        private void EnsureMarkerExists()
+        private void EnsureActiveMarkerExists()
         {
-            if (activeMarker == null)
+            EnsureMarkerExists(
+                DefaultActiveMarkerName,
+                ref activeMarker,
+                ref activeMarkerRenderer,
+                activeMarkerLocalPosition,
+                activeMarkerLocalScale,
+                ref sharedActiveRuntimeMarkerMaterial,
+                activeColor,
+                "Runtime Active Unit Marker");
+        }
+
+        private void EnsureReactionMarkerExists()
+        {
+            EnsureMarkerExists(
+                DefaultReactionMarkerName,
+                ref reactionMarker,
+                ref reactionMarkerRenderer,
+                reactionMarkerLocalPosition,
+                reactionMarkerLocalScale,
+                ref sharedReactionRuntimeMarkerMaterial,
+                reactionColor,
+                "Runtime Reaction Unit Marker");
+        }
+
+        private void EnsureMarkerExists(
+            string markerName,
+            ref Transform marker,
+            ref Renderer markerRenderer,
+            Vector3 localPosition,
+            Vector3 localScale,
+            ref Material sharedMaterial,
+            Color markerColor,
+            string materialName)
+        {
+            if (marker == null)
             {
-                activeMarker = FindExistingMarker();
+                marker = FindExistingMarker(markerName);
             }
 
-            if (activeMarker == null)
+            if (marker == null)
             {
-                activeMarker = CreateDefaultMarker();
+                marker = CreateDefaultMarker(markerName);
             }
 
-            activeMarker.localPosition = markerLocalPosition;
-            activeMarker.localRotation = Quaternion.identity;
-            activeMarker.localScale = SanitizeMarkerScale(markerLocalScale);
+            marker.localPosition = localPosition;
+            marker.localRotation = Quaternion.identity;
+            marker.localScale = SanitizeMarkerScale(localScale);
 
-            if (activeMarkerRenderer == null)
+            if (markerRenderer == null)
             {
-                activeMarkerRenderer = activeMarker.GetComponent<Renderer>();
+                markerRenderer = marker.GetComponent<Renderer>();
             }
 
-            if (activeMarkerRenderer != null)
+            if (markerRenderer != null)
             {
-                activeMarkerRenderer.sharedMaterial = GetRuntimeMarkerMaterial(activeColor);
-                activeMarkerRenderer.shadowCastingMode = ShadowCastingMode.Off;
-                activeMarkerRenderer.receiveShadows = false;
+                markerRenderer.sharedMaterial = GetRuntimeMarkerMaterial(ref sharedMaterial, markerColor, materialName);
+                markerRenderer.shadowCastingMode = ShadowCastingMode.Off;
+                markerRenderer.receiveShadows = false;
             }
         }
 
-        private Transform FindExistingMarker()
+        private Transform FindExistingMarker(string markerName)
         {
-            var marker = transform.Find(DefaultMarkerName);
+            var marker = transform.Find(markerName);
             return marker != null ? marker : null;
         }
 
-        private Transform CreateDefaultMarker()
+        private Transform CreateDefaultMarker(string markerName)
         {
             var markerObject = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            markerObject.name = DefaultMarkerName;
+            markerObject.name = markerName;
             markerObject.transform.SetParent(transform, false);
 
             var collider = markerObject.GetComponent<Collider>();
@@ -299,9 +428,9 @@ namespace ReactionTactics.Units
             return markerObject.transform;
         }
 
-        private static Material GetRuntimeMarkerMaterial(Color color)
+        private static Material GetRuntimeMarkerMaterial(ref Material sharedMaterial, Color color, string materialName)
         {
-            if (sharedRuntimeMarkerMaterial == null)
+            if (sharedMaterial == null)
             {
                 var shader = Shader.Find("Standard")
                     ?? Shader.Find("Universal Render Pipeline/Lit")
@@ -313,15 +442,15 @@ namespace ReactionTactics.Units
                     return null;
                 }
 
-                sharedRuntimeMarkerMaterial = new Material(shader)
+                sharedMaterial = new Material(shader)
                 {
-                    name = "Runtime Active Unit Marker"
+                    name = materialName,
+                    hideFlags = HideFlags.DontSave
                 };
-                sharedRuntimeMarkerMaterial.hideFlags = HideFlags.DontSave;
             }
 
-            ApplyMaterialColor(sharedRuntimeMarkerMaterial, color);
-            return sharedRuntimeMarkerMaterial;
+            ApplyMaterialColor(sharedMaterial, color);
+            return sharedMaterial;
         }
 
         private static void ApplyMaterialColor(Material material, Color color)

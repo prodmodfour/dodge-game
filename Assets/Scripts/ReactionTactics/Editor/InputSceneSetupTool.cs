@@ -2,6 +2,7 @@ using System;
 using Newtonsoft.Json.Linq;
 using ReactionTactics.Grid;
 using ReactionTactics.Input;
+using ReactionTactics.Turns;
 using ReactionTactics.UI;
 using ReactionTactics.Units;
 using UnityCliConnector;
@@ -60,11 +61,12 @@ namespace ReactionTactics.Editor
                 var hoverOverlay = EnsureSceneComponent<HoverGridDebugOverlay>(scene, uiRoot, ref hoverOverlayCreated);
                 var gridManager = FindComponentInScene<GridManager>(scene);
                 var unitRegistry = FindComponentInScene<UnitRegistry>(scene);
+                var combatManager = FindComponentInScene<CombatManager>(scene);
 
                 ConfigureCameraController(cameraController, gridManager);
                 ConfigureGridPicker(gridPicker, camera);
                 ConfigureSelectionController(selectionController, gridPicker);
-                ConfigureCommandRouter(commandRouter, selectionController, gridPicker);
+                ConfigureCommandRouter(commandRouter, selectionController, gridPicker, combatManager);
                 ConfigureHoverOverlay(hoverOverlay, gridPicker, gridManager, unitRegistry, camera);
 
                 if (gridManager != null && gridManager.RebuildMap())
@@ -110,7 +112,8 @@ namespace ReactionTactics.Editor
                     references = new
                     {
                         gridManager = gridManager != null ? GetScenePath(gridManager.gameObject) : null,
-                        unitRegistry = unitRegistry != null ? GetScenePath(unitRegistry.gameObject) : null
+                        unitRegistry = unitRegistry != null ? GetScenePath(unitRegistry.gameObject) : null,
+                        combatManager = combatManager != null ? GetScenePath(combatManager.gameObject) : null
                     }
                 });
             }
@@ -282,12 +285,14 @@ namespace ReactionTactics.Editor
         private static void ConfigureCommandRouter(
             PlayerCommandRouter commandRouter,
             SelectionController selectionController,
-            GridPicker gridPicker)
+            GridPicker gridPicker,
+            CombatManager combatManager)
         {
             var serializedObject = new SerializedObject(commandRouter);
             serializedObject.Update();
             SetObjectReference(serializedObject, "selectionController", selectionController);
             SetObjectReference(serializedObject, "gridPicker", gridPicker);
+            SetObjectReference(serializedObject, "combatManager", combatManager);
             SetBool(serializedObject, "keyboardShortcutsEnabled", true);
             SetBool(serializedObject, "logRoutedCommands", false);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();

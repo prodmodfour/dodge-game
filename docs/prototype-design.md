@@ -37,6 +37,7 @@ The prototype is about deterministic tactical timing. Attacks are avoided by spe
 - Reactions are commands a unit can use only during another unit's action window.
 - The acting unit does not react to its own action.
 - Only the current reactor in the reaction order may take a reaction command.
+- During a reaction turn, input selection and the current-reactor highlight should point at that unit; selecting another unit must not let it react out of order.
 - Reaction movement, Brace, and Pass are the prototype's expected baseline reaction choices.
 - Reaction movement spends AP, updates the unit's grid position, and can change whether the pending action affects that unit.
 - Brace costs 2 AP by default, prepares a one-shot fixed 2 damage reduction against the next positive incoming damage, and then advances the reaction window.

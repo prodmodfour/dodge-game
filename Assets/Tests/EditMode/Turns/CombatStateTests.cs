@@ -43,6 +43,7 @@ namespace ReactionTactics.Tests.EditMode.Turns
                 Assert.That(state.Phase, Is.EqualTo(CombatPhase.ReactionWindow));
                 Assert.That(state.ActiveUnit, Is.SameAs(activeUnit));
                 Assert.That(state.ReactingUnit, Is.SameAs(reactingUnit));
+                Assert.That(state.CurrentReactor, Is.SameAs(reactingUnit));
                 Assert.That(state.PendingActionIntent, Is.SameAs(pendingIntent));
                 Assert.That(state.HasActiveUnit, Is.True);
                 Assert.That(state.HasReactingUnit, Is.True);
@@ -53,6 +54,7 @@ namespace ReactionTactics.Tests.EditMode.Turns
                 state.ClearPendingActionIntent();
 
                 Assert.That(state.ReactingUnit, Is.Null);
+                Assert.That(state.CurrentReactor, Is.Null);
                 Assert.That(state.PendingActionIntent, Is.Null);
                 Assert.That(state.HasReactingUnit, Is.False);
                 Assert.That(state.HasPendingActionIntent, Is.False);
