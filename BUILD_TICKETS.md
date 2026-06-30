@@ -2096,7 +2096,7 @@ unity-ctrl --project "$PWD" test --filter ActionTargetTests
 
 ## 071 — Add action intent model
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add action intent model`
 
