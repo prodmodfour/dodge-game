@@ -881,7 +881,7 @@ unity-ctrl --project "$PWD" test --filter GridNeighborServiceTests
 
 ## 029 — Add movement cost service
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add movement cost service`
 
