@@ -4202,7 +4202,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 143 — Complete player-vs-AI turn handoff
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: complete player and ai turn handoff`
 

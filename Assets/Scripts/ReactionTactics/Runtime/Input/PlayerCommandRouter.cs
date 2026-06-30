@@ -153,6 +153,12 @@ namespace ReactionTactics.Input
                 return Reject(failure);
             }
 
+            var controlResult = ValidatePlayerCanControlSelectedActiveUnit(controller.SelectedUnit);
+            if (controlResult.IsFailure)
+            {
+                return Reject(controlResult);
+            }
+
             var result = controller.SetActionMode(SelectionActionMode.Move);
             if (result.IsFailure)
             {
@@ -179,6 +185,12 @@ namespace ReactionTactics.Input
             if (!TryGetControllerWithSelectedUnit(out var controller, out var failure))
             {
                 return Reject(failure);
+            }
+
+            var controlResult = ValidatePlayerCanControlSelectedActiveUnit(controller.SelectedUnit);
+            if (controlResult.IsFailure)
+            {
+                return Reject(controlResult);
             }
 
             var result = controller.SetActionMode(attackMode);
@@ -288,6 +300,12 @@ namespace ReactionTactics.Input
         {
             if (IsReactionControlActive())
             {
+                var reactionControlResult = ValidatePlayerCanControlCurrentReaction();
+                if (reactionControlResult.IsFailure)
+                {
+                    return Reject(reactionControlResult);
+                }
+
                 var focusResult = FocusCurrentReactorSelection();
                 if (focusResult.IsFailure)
                 {
@@ -303,6 +321,14 @@ namespace ReactionTactics.Input
             if (controller.SelectedActionMode == SelectionActionMode.None)
             {
                 return Reject("Select a move, attack, or reaction command before choosing a target.");
+            }
+
+            var controlResult = IsReactionControlActive()
+                ? ValidatePlayerCanControlCurrentReaction()
+                : ValidatePlayerCanControlSelectedActiveUnit(controller.SelectedUnit);
+            if (controlResult.IsFailure)
+            {
+                return Reject(controlResult);
             }
 
             var result = ApplyTargetSelection(controller, target);
@@ -325,6 +351,12 @@ namespace ReactionTactics.Input
         {
             if (IsReactionControlActive())
             {
+                var reactionControlResult = ValidatePlayerCanControlCurrentReaction();
+                if (reactionControlResult.IsFailure)
+                {
+                    return Reject(reactionControlResult);
+                }
+
                 var focusResult = FocusCurrentReactorSelection();
                 if (focusResult.IsFailure)
                 {
@@ -340,6 +372,14 @@ namespace ReactionTactics.Input
             if (controller.SelectedActionMode == SelectionActionMode.None)
             {
                 return Reject("Select a move or attack command before confirming a target.");
+            }
+
+            var controlResult = IsReactionControlActive()
+                ? ValidatePlayerCanControlCurrentReaction()
+                : ValidatePlayerCanControlSelectedActiveUnit(controller.SelectedUnit);
+            if (controlResult.IsFailure)
+            {
+                return Reject(controlResult);
             }
 
             var result = ApplyTargetSelection(controller, target);
@@ -376,10 +416,24 @@ namespace ReactionTactics.Input
         {
             if (IsReactionControlActive())
             {
+                var reactionControlResult = ValidatePlayerCanControlCurrentReaction();
+                if (reactionControlResult.IsFailure)
+                {
+                    return Reject(reactionControlResult);
+                }
+
                 var focusResult = FocusCurrentReactorSelection();
                 if (focusResult.IsFailure)
                 {
                     return Reject(focusResult);
+                }
+            }
+            else
+            {
+                var activeControlResult = ValidatePlayerCanControlCurrentActiveTurn();
+                if (activeControlResult.IsFailure)
+                {
+                    return Reject(activeControlResult);
                 }
             }
 
@@ -391,6 +445,12 @@ namespace ReactionTactics.Input
         {
             if (IsReactionControlActive())
             {
+                var reactionControlResult = ValidatePlayerCanControlCurrentReaction();
+                if (reactionControlResult.IsFailure)
+                {
+                    return Reject(reactionControlResult);
+                }
+
                 var focusResult = FocusCurrentReactorSelection();
                 if (focusResult.IsFailure)
                 {
@@ -603,6 +663,12 @@ namespace ReactionTactics.Input
 
         private TacticalResult SelectReactionMode(SelectionActionMode reactionMode)
         {
+            var controlResult = ValidatePlayerCanControlCurrentReaction();
+            if (controlResult.IsFailure)
+            {
+                return Reject(controlResult);
+            }
+
             if (!TryGetCurrentReactor(out var reactor, out var failure))
             {
                 return Reject(failure);
@@ -648,6 +714,12 @@ namespace ReactionTactics.Input
                     + $"Only current reactor {DescribeUnit(reactor)} may react now.");
             }
 
+            var controlResult = ValidatePlayerCanControlCurrentReaction();
+            if (controlResult.IsFailure)
+            {
+                return controlResult;
+            }
+
             return TacticalResult.Success();
         }
 
@@ -682,6 +754,68 @@ namespace ReactionTactics.Input
         {
             var manager = ResolveCombatManager();
             return manager != null && manager.CurrentState != null ? manager.CurrentState.CurrentReactor : null;
+        }
+
+        private TacticalResult ValidatePlayerCanControlCurrentActiveTurn()
+        {
+            var manager = ResolveCombatManager();
+            if (manager == null || manager.CurrentState == null)
+            {
+                return TacticalResult.Success();
+            }
+
+            if (!manager.CurrentState.IsActiveUnitPhase || manager.CurrentState.ActiveUnit == null)
+            {
+                return TacticalResult.Success();
+            }
+
+            if (!manager.IsActiveTurnControlledByAi)
+            {
+                return TacticalResult.Success();
+            }
+
+            return TacticalResult.Failure(
+                $"Cannot issue player active-turn commands while {DescribeUnit(manager.CurrentState.ActiveUnit)} is controlled by AI. Wait for the AI handoff to finish.");
+        }
+
+        private TacticalResult ValidatePlayerCanControlSelectedActiveUnit(TacticalUnit selectedUnit)
+        {
+            var activeTurnResult = ValidatePlayerCanControlCurrentActiveTurn();
+            if (activeTurnResult.IsFailure)
+            {
+                return activeTurnResult;
+            }
+
+            var manager = ResolveCombatManager();
+            if (manager == null || manager.CurrentState == null || manager.CurrentState.Phase == CombatPhase.NotStarted)
+            {
+                return TacticalResult.Success();
+            }
+
+            if (manager.IsUnitControlledByAi(selectedUnit))
+            {
+                return TacticalResult.Failure(
+                    $"Cannot issue player active-turn commands to {DescribeUnit(selectedUnit)} because that unit is controlled by AI.");
+            }
+
+            return TacticalResult.Success();
+        }
+
+        private TacticalResult ValidatePlayerCanControlCurrentReaction()
+        {
+            var manager = ResolveCombatManager();
+            if (manager == null || manager.CurrentState == null || !manager.CurrentState.IsReactionPhase)
+            {
+                return TacticalResult.Success();
+            }
+
+            if (!manager.IsReactionTurnControlledByAi)
+            {
+                return TacticalResult.Success();
+            }
+
+            return TacticalResult.Failure(
+                $"Cannot issue player reaction commands while {DescribeUnit(manager.CurrentState.CurrentReactor)} is controlled by AI. Wait for the AI reaction handoff to finish.");
         }
 
         private bool TryGetControllerWithSelectedUnit(out SelectionController controller, out TacticalResult failure)

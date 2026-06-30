@@ -94,7 +94,7 @@ Reactions do not open full nested reaction windows in the prototype. A reaction 
 
 ## Solo AI shell
 
-When an `AiController` is present on the combat systems object, the combat manager delegates Enemy-team active turns and Enemy-team reaction turns to it. The deterministic AI selects the nearest hostile target, declares melee, cone, or AoE actions through the normal action declaration flow when valuable, otherwise moves toward the nearest hostile while preserving a small reaction AP reserve. During reaction turns, AI units move to safe cells when possible, brace when threatened and unable to escape, or pass. Automatic AI decisions use a short configurable play-mode pacing delay so enemy choices are readable; tests and scripted validation can disable or skip that delay.
+When an `AiController` is present on the combat systems object, the combat manager delegates Enemy-team active turns and Enemy-team reaction turns to it. The deterministic AI selects the nearest hostile target, declares melee, cone, or AoE actions through the normal action declaration flow when valuable, otherwise moves toward the nearest hostile while preserving a small reaction AP reserve. During reaction turns, AI units move to safe cells when possible, brace when threatened and unable to escape, or pass. If an enemy AI action opens a player reaction window, control returns to the AI after the player reaction completes just long enough to finish/end that enemy turn, then hands back to the next player-team turn or combat-over state. Automatic AI decisions use a short configurable play-mode pacing delay so enemy choices are readable; tests and scripted validation can disable or skip that delay.
 
 ## Option A melee timing
 

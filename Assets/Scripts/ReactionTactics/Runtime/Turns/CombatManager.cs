@@ -123,6 +123,38 @@ namespace ReactionTactics.Turns
             get { return aiController; }
         }
 
+        public bool IsActiveTurnControlledByAi
+        {
+            get
+            {
+                var controller = ResolveAiController();
+                return controller != null && controller.ShouldHandleActiveTurn(this);
+            }
+        }
+
+        public bool IsReactionTurnControlledByAi
+        {
+            get
+            {
+                var controller = ResolveAiController();
+                if (controller == null || currentState == null || !currentState.IsReactionPhase)
+                {
+                    return false;
+                }
+
+                return controller.ShouldHandleReactionTurn(
+                    this,
+                    currentState.PendingActionIntent as ActionIntent,
+                    currentState.CurrentReactor);
+            }
+        }
+
+        public bool IsUnitControlledByAi(TacticalUnit unit)
+        {
+            var controller = ResolveAiController();
+            return controller != null && controller.AutomaticDelegationEnabled && controller.ControlsUnit(unit);
+        }
+
         public CombatEventBus EventBus
         {
             get { return eventBus; }
@@ -1361,7 +1393,34 @@ namespace ReactionTactics.Turns
 
             currentState.SetState(currentState.CurrentRound, CombatPhase.ActiveTurn, intent.Actor, null, null);
             ClearResolvedActionSelection();
-            return TacticalResult.Success();
+            return CompleteAiActiveTurnAfterResolvedAction(intent);
+        }
+
+        private TacticalResult CompleteAiActiveTurnAfterResolvedAction(ActionIntent intent)
+        {
+            if (intent == null || currentState.IsCombatOver)
+            {
+                return TacticalResult.Success();
+            }
+
+            var controller = ResolveAiController();
+            if (controller == null
+                || !ReferenceEquals(currentState.ActiveUnit, intent.Actor)
+                || !controller.ShouldHandleActiveTurn(this))
+            {
+                return TacticalResult.Success();
+            }
+
+            if (logActionFlow)
+            {
+                Debug.Log(
+                    $"[Combat Log] AI-controlled {DescribeUnit(intent.Actor)} completed '{intent.Ability.DisplayName}' after reactions; ending its active turn for player-vs-AI handoff.",
+                    this);
+            }
+
+            eventBus?.PublishCombatLog(
+                $"AI-controlled {DescribeUnit(intent.Actor)} completed {intent.Ability.DisplayName}; ending its active turn.");
+            return EndActiveTurn();
         }
 
         private void FocusInputOnCurrentReactor(TacticalUnit reactor)
