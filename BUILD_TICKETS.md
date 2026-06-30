@@ -2304,7 +2304,7 @@ unity-ctrl --project "$PWD" test --filter IntentPreviewTests
 
 ## 078 — Add action resolver shell
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add action resolver shell`
 
