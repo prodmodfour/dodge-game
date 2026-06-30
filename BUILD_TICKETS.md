@@ -939,7 +939,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 031 — Add grid terrain tests
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: cover prototype grid terrain generation`
 
