@@ -1577,7 +1577,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 053 — Add unit mouse picking
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add tactical unit picking`
 

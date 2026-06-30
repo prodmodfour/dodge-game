@@ -1,12 +1,14 @@
 using System;
 using System.Reflection;
 using ReactionTactics.Grid;
+using ReactionTactics.Units;
 using UnityEngine;
 
 namespace ReactionTactics.Input
 {
     /// <summary>
-    /// Converts mouse hover and click positions into grid tile selections by raycasting from the active camera.
+    /// Converts mouse hover and click positions into tactical unit or grid tile selections by raycasting from the active camera.
+    /// Unit colliders are prioritized over tile colliders when both are under the pointer.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class GridPicker : MonoBehaviour
@@ -19,7 +21,7 @@ namespace ReactionTactics.Input
         private Camera sourceCamera;
 
         [SerializeField]
-        [Tooltip("Physics layers included when looking for GridTileView colliders.")]
+        [Tooltip("Physics layers included when looking for TacticalUnit and GridTileView colliders.")]
         private LayerMask raycastLayerMask = ~0;
 
         [SerializeField]
@@ -32,12 +34,16 @@ namespace ReactionTactics.Input
         private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
 
         [SerializeField]
-        [Tooltip("When true, hovering or clicking over UI returns no grid pick result.")]
+        [Tooltip("When true, hovering or clicking over UI returns no pick result.")]
         private bool ignorePointerOverUi = true;
 
         [SerializeField]
         [Tooltip("Write a concise debug log when a tile is clicked. Useful until the command router consumes click events.")]
         private bool logClickedCells = true;
+
+        [SerializeField]
+        [Tooltip("Write a concise debug log when a tactical unit is clicked. Useful until the command router consumes click events.")]
+        private bool logClickedUnits = true;
 
         private static readonly Type EventSystemType = ResolveEventSystemType();
         private static readonly PropertyInfo CurrentEventSystemProperty = EventSystemType != null
@@ -57,6 +63,12 @@ namespace ReactionTactics.Input
         public event Action HoverCellCleared;
 
         public event Action<GridPickResult> CellClicked;
+
+        public event Action<UnitPickResult> HoverUnitChanged;
+
+        public event Action HoverUnitCleared;
+
+        public event Action<UnitPickResult> UnitClicked;
 
         public Camera SourceCamera
         {
@@ -94,6 +106,12 @@ namespace ReactionTactics.Input
             set { logClickedCells = value; }
         }
 
+        public bool LogClickedUnits
+        {
+            get { return logClickedUnits; }
+            set { logClickedUnits = value; }
+        }
+
         public bool HasCurrentHoverCell { get; private set; }
 
         public GridPosition CurrentHoverCell { get; private set; }
@@ -102,9 +120,20 @@ namespace ReactionTactics.Input
 
         public GridPickResult CurrentHoverResult { get; private set; }
 
+        public bool HasCurrentHoverUnit { get; private set; }
+
+        public TacticalUnit CurrentHoverUnit { get; private set; }
+
+        public UnitPickResult CurrentHoverUnitResult { get; private set; }
+
         public bool TryPickCurrentPointer(out GridPickResult result)
         {
             return TryPickScreenPosition(UnityEngine.Input.mousePosition, out result);
+        }
+
+        public bool TryPickCurrentPointerUnit(out UnitPickResult result)
+        {
+            return TryPickUnitScreenPosition(UnityEngine.Input.mousePosition, out result);
         }
 
         public bool TryPickScreenPosition(Vector2 screenPosition, out GridPickResult result)
@@ -118,9 +147,146 @@ namespace ReactionTactics.Input
             return TryPickScreenPositionIgnoringUi(screenPosition, out result);
         }
 
+        public bool TryPickUnitScreenPosition(Vector2 screenPosition, out UnitPickResult result)
+        {
+            if (IsPointerBlockedByUi())
+            {
+                result = default;
+                return false;
+            }
+
+            return TryPickUnitScreenPositionIgnoringUi(screenPosition, out result);
+        }
+
         public bool TryPickScreenPositionIgnoringUi(Vector2 screenPosition, out GridPickResult result)
         {
             result = default;
+
+            if (!TryRaycastScreenPosition(screenPosition, out var hitCount))
+            {
+                return false;
+            }
+
+            return TryFindNearestTileHit(hitCount, out result);
+        }
+
+        public bool TryPickUnitScreenPositionIgnoringUi(Vector2 screenPosition, out UnitPickResult result)
+        {
+            result = default;
+
+            if (!TryRaycastScreenPosition(screenPosition, out var hitCount))
+            {
+                return false;
+            }
+
+            return TryFindNearestUnitHit(hitCount, out result);
+        }
+
+        public bool UpdateHoverAtScreenPosition(Vector2 screenPosition)
+        {
+            if (IsPointerBlockedByUi() || !TryRaycastScreenPosition(screenPosition, out var hitCount))
+            {
+                ClearCurrentHover();
+                return false;
+            }
+
+            if (TryFindNearestUnitHit(hitCount, out var unitResult))
+            {
+                ClearCurrentCellHover();
+                SetCurrentUnitHover(unitResult);
+                return true;
+            }
+
+            ClearCurrentUnitHover();
+            if (TryFindNearestTileHit(hitCount, out var cellResult))
+            {
+                SetCurrentHover(cellResult);
+                return true;
+            }
+
+            ClearCurrentCellHover();
+            return false;
+        }
+
+        public bool TryClickScreenPosition(Vector2 screenPosition, out GridPickResult result)
+        {
+            return TryClickScreenPosition(screenPosition, out result, out _);
+        }
+
+        public bool TryClickScreenPosition(Vector2 screenPosition, out GridPickResult cellResult, out UnitPickResult unitResult)
+        {
+            cellResult = default;
+            unitResult = default;
+
+            if (IsPointerBlockedByUi() || !TryRaycastScreenPosition(screenPosition, out var hitCount))
+            {
+                return false;
+            }
+
+            if (TryFindNearestUnitHit(hitCount, out unitResult))
+            {
+                UnitClicked?.Invoke(unitResult);
+                if (logClickedUnits)
+                {
+                    Debug.Log(
+                        $"GridPicker clicked {unitResult.DisplayName} {unitResult.UnitId} [{unitResult.Team}] at {unitResult.Position}",
+                        unitResult.Unit);
+                }
+
+                return true;
+            }
+
+            if (!TryFindNearestTileHit(hitCount, out cellResult))
+            {
+                return false;
+            }
+
+            CellClicked?.Invoke(cellResult);
+            if (logClickedCells)
+            {
+                Debug.Log($"GridPicker clicked {cellResult.Position}", cellResult.Tile);
+            }
+
+            return true;
+        }
+
+        public void ClearCurrentHover()
+        {
+            ClearCurrentCellHover();
+            ClearCurrentUnitHover();
+        }
+
+        public void ClearCurrentUnitHover()
+        {
+            if (!HasCurrentHoverUnit)
+            {
+                return;
+            }
+
+            HasCurrentHoverUnit = false;
+            CurrentHoverUnit = null;
+            CurrentHoverUnitResult = default;
+            HoverUnitCleared?.Invoke();
+        }
+
+        private void Update()
+        {
+            UpdateHoverAtScreenPosition(UnityEngine.Input.mousePosition);
+
+            if (UnityEngine.Input.GetMouseButtonDown(0))
+            {
+                TryClickScreenPosition(UnityEngine.Input.mousePosition, out _, out _);
+            }
+        }
+
+        private void OnValidate()
+        {
+            maxRaycastDistance = Mathf.Max(0.01f, maxRaycastDistance);
+        }
+
+        private bool TryRaycastScreenPosition(Vector2 screenPosition, out int hitCount)
+        {
+            hitCount = 0;
 
             var resolvedCamera = ResolveCamera();
             if (resolvedCamera == null)
@@ -129,18 +295,18 @@ namespace ReactionTactics.Input
             }
 
             var ray = resolvedCamera.ScreenPointToRay(screenPosition);
-            var hitCount = Physics.RaycastNonAlloc(
+            hitCount = Physics.RaycastNonAlloc(
                 ray,
                 hitBuffer,
                 maxRaycastDistance,
                 raycastLayerMask,
                 triggerInteraction);
 
-            if (hitCount <= 0)
-            {
-                return false;
-            }
+            return hitCount > 0;
+        }
 
+        private bool TryFindNearestTileHit(int hitCount, out GridPickResult result)
+        {
             GridTileView nearestTile = null;
             RaycastHit nearestHit = default;
             var nearestDistance = float.PositiveInfinity;
@@ -165,6 +331,7 @@ namespace ReactionTactics.Input
 
             if (nearestTile == null)
             {
+                result = default;
                 return false;
             }
 
@@ -172,35 +339,41 @@ namespace ReactionTactics.Input
             return true;
         }
 
-        public bool UpdateHoverAtScreenPosition(Vector2 screenPosition)
+        private bool TryFindNearestUnitHit(int hitCount, out UnitPickResult result)
         {
-            if (TryPickScreenPosition(screenPosition, out var result))
+            TacticalUnit nearestUnit = null;
+            RaycastHit nearestHit = default;
+            var nearestDistance = float.PositiveInfinity;
+            for (var index = 0; index < hitCount; index++)
             {
-                SetCurrentHover(result);
-                return true;
+                var hit = hitBuffer[index];
+                if (hit.collider == null || hit.distance >= nearestDistance)
+                {
+                    continue;
+                }
+
+                var unit = hit.collider.GetComponentInParent<TacticalUnit>();
+                if (unit == null || !unit.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                nearestUnit = unit;
+                nearestHit = hit;
+                nearestDistance = hit.distance;
             }
 
-            ClearCurrentHover();
-            return false;
-        }
-
-        public bool TryClickScreenPosition(Vector2 screenPosition, out GridPickResult result)
-        {
-            if (!TryPickScreenPosition(screenPosition, out result))
+            if (nearestUnit == null)
             {
+                result = default;
                 return false;
             }
 
-            CellClicked?.Invoke(result);
-            if (logClickedCells)
-            {
-                Debug.Log($"GridPicker clicked {result.Position}", result.Tile);
-            }
-
+            result = new UnitPickResult(nearestUnit, nearestHit);
             return true;
         }
 
-        public void ClearCurrentHover()
+        private void ClearCurrentCellHover()
         {
             if (!HasCurrentHoverCell)
             {
@@ -212,21 +385,6 @@ namespace ReactionTactics.Input
             CurrentHoverTile = null;
             CurrentHoverResult = default;
             HoverCellCleared?.Invoke();
-        }
-
-        private void Update()
-        {
-            UpdateHoverAtScreenPosition(UnityEngine.Input.mousePosition);
-
-            if (UnityEngine.Input.GetMouseButtonDown(0))
-            {
-                TryClickScreenPosition(UnityEngine.Input.mousePosition, out _);
-            }
-        }
-
-        private void OnValidate()
-        {
-            maxRaycastDistance = Mathf.Max(0.01f, maxRaycastDistance);
         }
 
         private void SetCurrentHover(GridPickResult result)
@@ -243,6 +401,20 @@ namespace ReactionTactics.Input
             if (changed)
             {
                 HoverCellChanged?.Invoke(result);
+            }
+        }
+
+        private void SetCurrentUnitHover(UnitPickResult result)
+        {
+            var changed = !HasCurrentHoverUnit || CurrentHoverUnit != result.Unit;
+
+            HasCurrentHoverUnit = true;
+            CurrentHoverUnit = result.Unit;
+            CurrentHoverUnitResult = result;
+
+            if (changed)
+            {
+                HoverUnitChanged?.Invoke(result);
             }
         }
 

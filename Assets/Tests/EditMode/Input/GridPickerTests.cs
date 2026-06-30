@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using ReactionTactics.Grid;
 using ReactionTactics.Input;
+using ReactionTactics.Units;
 using UnityEngine;
 
 namespace ReactionTactics.Tests.EditMode.Input
@@ -23,6 +24,39 @@ namespace ReactionTactics.Tests.EditMode.Input
             }
             finally
             {
+                fixture.Destroy();
+            }
+        }
+
+        [Test]
+        public void TryPickUnitScreenPositionReturnsUnitIdentityAndTeam()
+        {
+            var fixture = CreateFixture(new GridPosition(2, 0, 3));
+            var stats = CreateStats("Enemy Rogue");
+            var unitObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            TacticalUnit unit = null;
+
+            try
+            {
+                unitObject.name = "Enemy Rogue Unit";
+                unitObject.transform.position = new Vector3(0f, 0f, -1.5f);
+                unit = unitObject.AddComponent<TacticalUnit>();
+                unit.Initialize(new UnitId(42), TeamId.Enemy, stats, new GridPosition(2, 0, 3));
+                Physics.SyncTransforms();
+
+                var screenPosition = fixture.Camera.WorldToScreenPoint(fixture.Tile.transform.position);
+
+                Assert.That(fixture.Picker.TryPickUnitScreenPosition(screenPosition, out var result), Is.True);
+                Assert.That(result.Unit, Is.SameAs(unit));
+                Assert.That(result.UnitId, Is.EqualTo(new UnitId(42)));
+                Assert.That(result.Team, Is.EqualTo(TeamId.Enemy));
+                Assert.That(result.Position, Is.EqualTo(new GridPosition(2, 0, 3)));
+                Assert.That(result.DisplayName, Is.EqualTo("Enemy Rogue"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(unitObject);
+                UnityEngine.Object.DestroyImmediate(stats);
                 fixture.Destroy();
             }
         }
@@ -69,6 +103,58 @@ namespace ReactionTactics.Tests.EditMode.Input
         }
 
         [Test]
+        public void UnitHoverStateUpdatesOncePerUnitAndClearsOnEmptySpace()
+        {
+            var fixture = CreateFixture(new GridPosition(5, 0, 1));
+            var stats = CreateStats("Player Knight");
+            var unitObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            var changedCount = 0;
+            var clearedCount = 0;
+            UnitPickResult lastHover = default;
+
+            try
+            {
+                unitObject.name = "Player Knight Unit";
+                unitObject.transform.position = new Vector3(0f, 0f, -1.5f);
+                var unit = unitObject.AddComponent<TacticalUnit>();
+                unit.Initialize(new UnitId(7), TeamId.Player, stats, new GridPosition(5, 0, 1));
+                Physics.SyncTransforms();
+
+                fixture.Picker.HoverUnitChanged += result =>
+                {
+                    changedCount++;
+                    lastHover = result;
+                };
+                fixture.Picker.HoverUnitCleared += () => clearedCount++;
+
+                var screenPosition = fixture.Camera.WorldToScreenPoint(fixture.Tile.transform.position);
+
+                Assert.That(fixture.Picker.UpdateHoverAtScreenPosition(screenPosition), Is.True);
+                Assert.That(fixture.Picker.UpdateHoverAtScreenPosition(screenPosition), Is.True);
+
+                Assert.That(changedCount, Is.EqualTo(1));
+                Assert.That(clearedCount, Is.EqualTo(0));
+                Assert.That(fixture.Picker.HasCurrentHoverUnit, Is.True);
+                Assert.That(fixture.Picker.CurrentHoverUnit, Is.SameAs(unit));
+                Assert.That(fixture.Picker.HasCurrentHoverCell, Is.False);
+                Assert.That(lastHover.Unit, Is.SameAs(unit));
+                Assert.That(lastHover.Team, Is.EqualTo(TeamId.Player));
+
+                Assert.That(fixture.Picker.UpdateHoverAtScreenPosition(Vector2.zero), Is.False);
+
+                Assert.That(clearedCount, Is.EqualTo(1));
+                Assert.That(fixture.Picker.HasCurrentHoverUnit, Is.False);
+                Assert.That(fixture.Picker.CurrentHoverUnit, Is.Null);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(unitObject);
+                UnityEngine.Object.DestroyImmediate(stats);
+                fixture.Destroy();
+            }
+        }
+
+        [Test]
         public void TryClickScreenPositionEmitsClickedCellEventOnlyWhenTileIsHit()
         {
             var fixture = CreateFixture(new GridPosition(1, 0, 2));
@@ -101,6 +187,54 @@ namespace ReactionTactics.Tests.EditMode.Input
             }
         }
 
+        [Test]
+        public void TryClickScreenPositionPrioritizesUnitOverTileWhenBothAreHit()
+        {
+            var fixture = CreateFixture(new GridPosition(3, 0, 4));
+            var stats = CreateStats("Enemy Goblin");
+            var unitObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            var cellClickedCount = 0;
+            var unitClickedCount = 0;
+            UnitPickResult clickedUnit = default;
+
+            try
+            {
+                unitObject.name = "Enemy Goblin Unit";
+                unitObject.transform.position = new Vector3(0f, 0f, -1.5f);
+                var unit = unitObject.AddComponent<TacticalUnit>();
+                unit.Initialize(new UnitId(99), TeamId.Enemy, stats, new GridPosition(3, 0, 4));
+                Physics.SyncTransforms();
+
+                fixture.Picker.LogClickedCells = false;
+                fixture.Picker.LogClickedUnits = false;
+                fixture.Picker.CellClicked += _ => cellClickedCount++;
+                fixture.Picker.UnitClicked += result =>
+                {
+                    unitClickedCount++;
+                    clickedUnit = result;
+                };
+
+                var screenPosition = fixture.Camera.WorldToScreenPoint(fixture.Tile.transform.position);
+
+                Assert.That(
+                    fixture.Picker.TryClickScreenPosition(screenPosition, out var cellResult, out var unitResult),
+                    Is.True);
+
+                Assert.That(cellClickedCount, Is.EqualTo(0));
+                Assert.That(unitClickedCount, Is.EqualTo(1));
+                Assert.That(cellResult.Tile, Is.Null);
+                Assert.That(unitResult.Unit, Is.SameAs(unit));
+                Assert.That(clickedUnit.Unit, Is.SameAs(unit));
+                Assert.That(clickedUnit.Team, Is.EqualTo(TeamId.Enemy));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(unitObject);
+                UnityEngine.Object.DestroyImmediate(stats);
+                fixture.Destroy();
+            }
+        }
+
         private static PickerFixture CreateFixture(GridPosition tilePosition)
         {
             var cameraObject = new GameObject("Grid Picker Test Camera");
@@ -121,9 +255,17 @@ namespace ReactionTactics.Tests.EditMode.Input
             var picker = pickerObject.AddComponent<GridPicker>();
             picker.SourceCamera = camera;
             picker.LogClickedCells = false;
+            picker.LogClickedUnits = false;
 
             Physics.SyncTransforms();
             return new PickerFixture(cameraObject, tileObject, pickerObject, camera, tile, picker);
+        }
+
+        private static UnitStatsDefinition CreateStats(string displayName)
+        {
+            var stats = ScriptableObject.CreateInstance<UnitStatsDefinition>();
+            stats.Configure(displayName, 10, 6, 4f, 1, Color.white);
+            return stats;
         }
 
         private readonly struct PickerFixture
@@ -158,9 +300,9 @@ namespace ReactionTactics.Tests.EditMode.Input
 
             public void Destroy()
             {
-                Object.DestroyImmediate(PickerObject);
-                Object.DestroyImmediate(TileObject);
-                Object.DestroyImmediate(CameraObject);
+                UnityEngine.Object.DestroyImmediate(PickerObject);
+                UnityEngine.Object.DestroyImmediate(TileObject);
+                UnityEngine.Object.DestroyImmediate(CameraObject);
             }
         }
     }
