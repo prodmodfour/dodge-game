@@ -605,6 +605,7 @@ namespace ReactionTactics.Turns
             }
 
             currentReactionWindow.CompleteCurrentReactor();
+            PresentReactionMove(command);
             LogReactionMove(command, previousPosition, previousAP);
             currentState.SetState(currentState.CurrentRound, CombatPhase.ReactionWindow, sourceIntent.Actor, null, sourceIntent);
             return AdvanceReactionWindowOrResolve(sourceIntent);
@@ -1853,6 +1854,38 @@ namespace ReactionTactics.Turns
             }
 
             command.Unit.transform.position = metrics.GridToWorldCenter(command.Destination);
+        }
+
+        private void PresentReactionMove(ReactionMoveCommand command)
+        {
+            if (command.Reactor == null || gridManager == null)
+            {
+                return;
+            }
+
+            var metrics = gridManager.Metrics;
+            var mover = command.Reactor.GetComponent<GridPathMover>();
+            if (mover != null)
+            {
+                mover.Metrics = metrics;
+                if (Application.isPlaying && mover.isActiveAndEnabled && mover.gameObject.activeInHierarchy)
+                {
+                    if (mover.IsMoving)
+                    {
+                        mover.StopMovement();
+                    }
+
+                    mover.MoveAlongPath(command.Path, metrics);
+                }
+                else
+                {
+                    mover.SnapTo(command.Destination, metrics);
+                }
+
+                return;
+            }
+
+            command.Reactor.transform.position = metrics.GridToWorldCenter(command.Destination);
         }
 
         private void LogActiveMove(ActiveMoveCommand command, GridPosition previousPosition, int previousAP)
