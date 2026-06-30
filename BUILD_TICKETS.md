@@ -4259,7 +4259,7 @@ unity-ctrl --project "$PWD" test --mode PlayMode --filter TacticalSmokePlayModeT
 
 ## 145 — Add deterministic combat simulation test
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: add deterministic combat simulation test`
 
