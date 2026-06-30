@@ -103,6 +103,7 @@ GameObject:
   - component: {fileID: 1111043243746983847}
   - component: {fileID: 1387755182845257851}
   - component: {fileID: 3441907232619253536}
+  - component: {fileID: 6520726003127981362}
   m_Layer: 0
   m_Name: PrototypeUnit
   m_TagString: Untagged
@@ -145,6 +146,8 @@ MonoBehaviour:
   currentGridPosition: {x: 0, y: 0, z: 0}
   currentHP: 0
   currentAP: 0
+  bracedUntilNextHit: 0
+  braceDamageReduction: 0
   isAlive: 0
 --- !u!114 &1111043243746983847
 MonoBehaviour:
@@ -205,8 +208,39 @@ MonoBehaviour:
   activeMarker: {fileID: 0}
   activeMarkerRenderer: {fileID: 0}
   activeColor: {r: 1, g: 0.88, b: 0.05, a: 1}
-  markerLocalPosition: {x: 0, y: 0.04, z: 0}
-  markerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  activeMarkerLocalPosition: {x: 0, y: 0.04, z: 0}
+  activeMarkerLocalScale: {x: 1.15, y: 0.025, z: 1.15}
+  reactionMarker: {fileID: 0}
+  reactionMarkerRenderer: {fileID: 0}
+  reactionColor: {r: 0.1, g: 0.95, b: 1, a: 1}
+  reactionMarkerLocalPosition: {x: 0, y: 0.075, z: 0}
+  reactionMarkerLocalScale: {x: 0.82, y: 0.03, z: 0.82}
+--- !u!114 &6520726003127981362
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5822208227858677223}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67631be8616c534e0808abff6ce5d31c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.UnitStatusView
+  tacticalUnit: {fileID: 4505742212212063961}
+  eventBus: {fileID: 0}
+  targetCamera: {fileID: 0}
+  visible: 1
+  hideDeadUnits: 0
+  hideWhenBehindCamera: 1
+  worldOffset: {x: 0, y: 2.25, z: 0}
+  plateSize: {x: 152, y: 58}
+  fontSize: 12
+  playerBackgroundColor: {r: 0.05, g: 0.22, b: 0.72, a: 0.78}
+  enemyBackgroundColor: {r: 0.7, g: 0.12, b: 0.08, a: 0.78}
+  defeatedBackgroundColor: {r: 0.18, g: 0.18, b: 0.18, a: 0.82}
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  defeatedTextColor: {r: 1, g: 0.75, b: 0.75, a: 1}
 --- !u!1 &8679035401634518985
 GameObject:
   m_ObjectHideFlags: 0

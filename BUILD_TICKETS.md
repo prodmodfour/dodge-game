@@ -3203,7 +3203,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 109 — Add unit HP/AP nameplates
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: show unit hp and ap plates`
 

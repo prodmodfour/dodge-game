@@ -733,6 +733,7 @@ GameObject:
   - component: {fileID: 792797862}
   - component: {fileID: 792797861}
   - component: {fileID: 792797860}
+  - component: {fileID: 792797865}
   m_Layer: 0
   m_Name: Goblin Enemy Unit#3
   m_TagString: Untagged
@@ -861,6 +862,32 @@ MonoBehaviour:
   bracedUntilNextHit: 0
   braceDamageReduction: 0
   isAlive: 1
+--- !u!114 &792797865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 792797858}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67631be8616c534e0808abff6ce5d31c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.UnitStatusView
+  tacticalUnit: {fileID: 792797864}
+  eventBus: {fileID: 0}
+  targetCamera: {fileID: 0}
+  visible: 1
+  hideDeadUnits: 0
+  hideWhenBehindCamera: 1
+  worldOffset: {x: 0, y: 2.25, z: 0}
+  plateSize: {x: 152, y: 58}
+  fontSize: 12
+  playerBackgroundColor: {r: 0.05, g: 0.22, b: 0.72, a: 0.78}
+  enemyBackgroundColor: {r: 0.7, g: 0.12, b: 0.08, a: 0.78}
+  defeatedBackgroundColor: {r: 0.18, g: 0.18, b: 0.18, a: 0.82}
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  defeatedTextColor: {r: 1, g: 0.75, b: 0.75, a: 1}
 --- !u!1 &849092056
 GameObject:
   m_ObjectHideFlags: 0
@@ -1284,6 +1311,7 @@ GameObject:
   - component: {fileID: 1181229180}
   - component: {fileID: 1181229179}
   - component: {fileID: 1181229178}
+  - component: {fileID: 1181229183}
   m_Layer: 0
   m_Name: Rogue Player Unit#2
   m_TagString: Untagged
@@ -1412,6 +1440,32 @@ MonoBehaviour:
   bracedUntilNextHit: 0
   braceDamageReduction: 0
   isAlive: 1
+--- !u!114 &1181229183
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1181229176}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67631be8616c534e0808abff6ce5d31c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.UnitStatusView
+  tacticalUnit: {fileID: 1181229182}
+  eventBus: {fileID: 0}
+  targetCamera: {fileID: 0}
+  visible: 1
+  hideDeadUnits: 0
+  hideWhenBehindCamera: 1
+  worldOffset: {x: 0, y: 2.25, z: 0}
+  plateSize: {x: 152, y: 58}
+  fontSize: 12
+  playerBackgroundColor: {r: 0.05, g: 0.22, b: 0.72, a: 0.78}
+  enemyBackgroundColor: {r: 0.7, g: 0.12, b: 0.08, a: 0.78}
+  defeatedBackgroundColor: {r: 0.18, g: 0.18, b: 0.18, a: 0.82}
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  defeatedTextColor: {r: 1, g: 0.75, b: 0.75, a: 1}
 --- !u!1 &1293037496
 GameObject:
   m_ObjectHideFlags: 0
@@ -1766,6 +1820,7 @@ GameObject:
   - component: {fileID: 1894430880}
   - component: {fileID: 1894430879}
   - component: {fileID: 1894430878}
+  - component: {fileID: 1894430883}
   m_Layer: 0
   m_Name: Shaman Enemy Unit#4
   m_TagString: Untagged
@@ -1895,6 +1950,32 @@ MonoBehaviour:
   bracedUntilNextHit: 0
   braceDamageReduction: 0
   isAlive: 1
+--- !u!114 &1894430883
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1894430876}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67631be8616c534e0808abff6ce5d31c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.UnitStatusView
+  tacticalUnit: {fileID: 1894430882}
+  eventBus: {fileID: 0}
+  targetCamera: {fileID: 0}
+  visible: 1
+  hideDeadUnits: 0
+  hideWhenBehindCamera: 1
+  worldOffset: {x: 0, y: 2.25, z: 0}
+  plateSize: {x: 152, y: 58}
+  fontSize: 12
+  playerBackgroundColor: {r: 0.05, g: 0.22, b: 0.72, a: 0.78}
+  enemyBackgroundColor: {r: 0.7, g: 0.12, b: 0.08, a: 0.78}
+  defeatedBackgroundColor: {r: 0.18, g: 0.18, b: 0.18, a: 0.82}
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  defeatedTextColor: {r: 1, g: 0.75, b: 0.75, a: 1}
 --- !u!1 &2130964990
 GameObject:
   m_ObjectHideFlags: 0
@@ -1909,6 +1990,7 @@ GameObject:
   - component: {fileID: 2130964994}
   - component: {fileID: 2130964993}
   - component: {fileID: 2130964992}
+  - component: {fileID: 2130964997}
   m_Layer: 0
   m_Name: Knight Player Unit#1
   m_TagString: Untagged
@@ -2037,6 +2119,32 @@ MonoBehaviour:
   bracedUntilNextHit: 0
   braceDamageReduction: 0
   isAlive: 1
+--- !u!114 &2130964997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130964990}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67631be8616c534e0808abff6ce5d31c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.UnitStatusView
+  tacticalUnit: {fileID: 2130964996}
+  eventBus: {fileID: 0}
+  targetCamera: {fileID: 0}
+  visible: 1
+  hideDeadUnits: 0
+  hideWhenBehindCamera: 1
+  worldOffset: {x: 0, y: 2.25, z: 0}
+  plateSize: {x: 152, y: 58}
+  fontSize: 12
+  playerBackgroundColor: {r: 0.05, g: 0.22, b: 0.72, a: 0.78}
+  enemyBackgroundColor: {r: 0.7, g: 0.12, b: 0.08, a: 0.78}
+  defeatedBackgroundColor: {r: 0.18, g: 0.18, b: 0.18, a: 0.82}
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  defeatedTextColor: {r: 1, g: 0.75, b: 0.75, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
