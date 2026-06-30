@@ -1755,7 +1755,7 @@ unity-ctrl --project "$PWD" menu "File/Save"
 
 ## 059 — Add combat phase enum and state object
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add combat phase state model`
 
