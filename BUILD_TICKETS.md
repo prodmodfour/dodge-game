@@ -2244,7 +2244,7 @@ unity-ctrl --project "$PWD" rt_find_assets --params '{"filter":"t:AbilityDefinit
 
 ## 076 — Assign default abilities to units
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: assign prototype ability loadouts`
 

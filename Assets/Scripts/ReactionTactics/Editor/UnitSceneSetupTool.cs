@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using ReactionTactics.Actions;
 using ReactionTactics.Grid;
 using ReactionTactics.Units;
 using UnityCliConnector;
@@ -20,6 +21,7 @@ namespace ReactionTactics.Editor
         private const string InitialUnitsRootName = "Initial Units";
         private const string PrototypeUnitPrefabPath = "Assets/Prefabs/PrototypeUnit.prefab";
         private const string UnitAssetFolderPath = "Assets/ScriptableObjects/Units";
+        private const string AbilityAssetFolderPath = "Assets/ScriptableObjects/Abilities";
         private const int FirstUnitId = 1;
 
         private static readonly UnitSpawnSpec[] DefaultUnitSpawns =
@@ -28,6 +30,26 @@ namespace ReactionTactics.Editor
             new UnitSpawnSpec("Rogue", TeamId.Player, new GridPosition(1, 0, 0)),
             new UnitSpawnSpec("Goblin", TeamId.Enemy, new GridPosition(7, 0, 7)),
             new UnitSpawnSpec("Shaman", TeamId.Enemy, new GridPosition(6, 0, 7))
+        };
+
+        private static readonly AbilityAssetSpec[] RequiredAbilityAssets =
+        {
+            new AbilityAssetSpec("move", "Move"),
+            new AbilityAssetSpec("melee_slash", "MeleeSlash"),
+            new AbilityAssetSpec("cone_shot", "ConeShot"),
+            new AbilityAssetSpec("fireball", "Fireball"),
+            new AbilityAssetSpec("brace", "Brace"),
+            new AbilityAssetSpec("pass_reaction", "PassReaction")
+        };
+
+        private static readonly UnitAbilityLoadoutSpec[] DefaultAbilityLoadouts =
+        {
+            new UnitAbilityLoadoutSpec("Knight", "move", "melee_slash", "brace", "pass_reaction"),
+            new UnitAbilityLoadoutSpec("Rogue", "move", "melee_slash", "brace", "pass_reaction"),
+            new UnitAbilityLoadoutSpec("Archer", "move", "cone_shot", "melee_slash", "brace", "pass_reaction"),
+            new UnitAbilityLoadoutSpec("Mage", "move", "fireball", "melee_slash", "brace", "pass_reaction"),
+            new UnitAbilityLoadoutSpec("Goblin", "move", "melee_slash", "brace", "pass_reaction"),
+            new UnitAbilityLoadoutSpec("Shaman", "move", "fireball", "melee_slash", "brace", "pass_reaction")
         };
 
         public sealed class Parameters
@@ -50,6 +72,12 @@ namespace ReactionTactics.Editor
                 var scene = OpenOrUseScene(scenePath);
                 var unitPrefab = LoadRequiredUnitPrefab(PrototypeUnitPrefabPath);
                 var statsByName = LoadRequiredUnitStats(DefaultUnitSpawns);
+                var abilitiesByKey = LoadRequiredAbilities(RequiredAbilityAssets);
+                var loadoutsByStatsName = BuildRequiredLoadouts(DefaultAbilityLoadouts, abilitiesByKey);
+                if (!TryValidateSpawnLoadouts(DefaultUnitSpawns, loadoutsByStatsName, out var loadoutFailureReason))
+                {
+                    return new ErrorResponse(loadoutFailureReason);
+                }
 
                 var systemsRootCreated = false;
                 var unitsRootCreated = false;
@@ -97,6 +125,8 @@ namespace ReactionTactics.Editor
                     }
 
                     var unit = spawnResult.Value;
+                    var loadout = AssignAbilityLoadout(unit, spec, loadoutsByStatsName);
+                    EditorUtility.SetDirty(loadout);
                     EditorUtility.SetDirty(unit);
                     EditorUtility.SetDirty(unit.gameObject);
                     spawnedUnits.Add(ToUnitSummary(unit));
@@ -133,6 +163,8 @@ namespace ReactionTactics.Editor
                     initialUnitsRoot = GetScenePath(initialUnitsRoot.gameObject),
                     initialUnitsRootCreated,
                     unitPrefab = PrototypeUnitPrefabPath,
+                    abilityAssetCount = abilitiesByKey.Count,
+                    defaultLoadoutCount = loadoutsByStatsName.Count,
                     playerCount,
                     enemyCount,
                     registeredCount = registry.RegisteredCount,
@@ -210,6 +242,86 @@ namespace ReactionTactics.Editor
             }
 
             return statsByName;
+        }
+
+        private static Dictionary<string, AbilityDefinition> LoadRequiredAbilities(IEnumerable<AbilityAssetSpec> specs)
+        {
+            var abilitiesByKey = new Dictionary<string, AbilityDefinition>(StringComparer.Ordinal);
+            foreach (var spec in specs)
+            {
+                var ability = AssetDatabase.LoadAssetAtPath<AbilityDefinition>(spec.AssetPath);
+                if (ability == null)
+                {
+                    throw new InvalidOperationException($"Required default ability asset was not found at '{spec.AssetPath}'. Run rt_create_default_abilities first.");
+                }
+
+                var validationResult = ability.ValidateDefinition();
+                if (validationResult.IsFailure)
+                {
+                    throw new InvalidOperationException($"Default ability asset '{spec.AssetPath}' is invalid: {validationResult.ErrorMessage}");
+                }
+
+                if (!string.Equals(ability.AbilityKey, spec.AbilityKey, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException($"Default ability asset '{spec.AssetPath}' has key '{ability.AbilityKey}' but expected '{spec.AbilityKey}'. Run rt_create_default_abilities first.");
+                }
+
+                if (abilitiesByKey.ContainsKey(ability.AbilityKey))
+                {
+                    throw new InvalidOperationException($"Default ability key '{ability.AbilityKey}' is loaded more than once.");
+                }
+
+                abilitiesByKey.Add(ability.AbilityKey, ability);
+            }
+
+            return abilitiesByKey;
+        }
+
+        private static Dictionary<string, IReadOnlyList<AbilityDefinition>> BuildRequiredLoadouts(
+            IEnumerable<UnitAbilityLoadoutSpec> loadoutSpecs,
+            IReadOnlyDictionary<string, AbilityDefinition> abilitiesByKey)
+        {
+            var loadoutsByStatsName = new Dictionary<string, IReadOnlyList<AbilityDefinition>>(StringComparer.Ordinal);
+            foreach (var loadoutSpec in loadoutSpecs)
+            {
+                if (loadoutsByStatsName.ContainsKey(loadoutSpec.StatsAssetName))
+                {
+                    throw new InvalidOperationException($"Default loadout for '{loadoutSpec.StatsAssetName}' is defined more than once.");
+                }
+
+                var abilities = new List<AbilityDefinition>();
+                foreach (var abilityKey in loadoutSpec.AbilityKeys)
+                {
+                    if (!abilitiesByKey.TryGetValue(abilityKey, out var ability))
+                    {
+                        throw new InvalidOperationException($"Default loadout for '{loadoutSpec.StatsAssetName}' requires unknown ability key '{abilityKey}'.");
+                    }
+
+                    abilities.Add(ability);
+                }
+
+                loadoutsByStatsName.Add(loadoutSpec.StatsAssetName, abilities);
+            }
+
+            return loadoutsByStatsName;
+        }
+
+        private static bool TryValidateSpawnLoadouts(
+            IEnumerable<UnitSpawnSpec> unitSpawns,
+            IReadOnlyDictionary<string, IReadOnlyList<AbilityDefinition>> loadoutsByStatsName,
+            out string failureReason)
+        {
+            foreach (var spec in unitSpawns)
+            {
+                if (!loadoutsByStatsName.TryGetValue(spec.StatsAssetName, out var abilities) || abilities.Count == 0)
+                {
+                    failureReason = $"No default ability loadout is defined for spawned unit '{spec.StatsAssetName}'.";
+                    return false;
+                }
+            }
+
+            failureReason = string.Empty;
+            return true;
         }
 
         private static GameObject EnsureRootObject(Scene scene, string rootName, ref bool created)
@@ -297,6 +409,26 @@ namespace ReactionTactics.Editor
         {
             spawner.Configure(unitPrefab, registry, gridManager, spawnParent);
             EditorUtility.SetDirty(spawner);
+        }
+
+        private static UnitAbilityLoadout AssignAbilityLoadout(
+            TacticalUnit unit,
+            UnitSpawnSpec spec,
+            IReadOnlyDictionary<string, IReadOnlyList<AbilityDefinition>> loadoutsByStatsName)
+        {
+            if (!loadoutsByStatsName.TryGetValue(spec.StatsAssetName, out var abilities))
+            {
+                throw new InvalidOperationException($"No default ability loadout is defined for spawned unit '{spec.StatsAssetName}'.");
+            }
+
+            var loadout = unit.GetComponent<UnitAbilityLoadout>();
+            if (loadout == null)
+            {
+                loadout = unit.gameObject.AddComponent<UnitAbilityLoadout>();
+            }
+
+            loadout.SetAbilities(abilities);
+            return loadout;
         }
 
         private static void ClearChildren(Transform parent)
@@ -398,6 +530,11 @@ namespace ReactionTactics.Editor
 
         private static object ToUnitSummary(TacticalUnit unit)
         {
+            var loadout = unit.GetComponent<UnitAbilityLoadout>();
+            IReadOnlyList<AbilityDefinition> assignedAbilities = loadout != null
+                ? loadout.GetAssignedAbilities()
+                : new List<AbilityDefinition>();
+
             return new
             {
                 name = unit.name,
@@ -408,8 +545,39 @@ namespace ReactionTactics.Editor
                 gridPosition = ToPositionSummary(unit.CurrentGridPosition),
                 worldPosition = ToPositionSummary(unit.transform.position),
                 hp = unit.CurrentHP,
-                ap = unit.CurrentAP
+                ap = unit.CurrentAP,
+                abilityCount = assignedAbilities.Count,
+                actionAbilityCount = loadout != null ? loadout.GetActionAbilities().Count : 0,
+                reactionAbilityCount = loadout != null ? loadout.GetReactionAbilities().Count : 0,
+                abilities = ToAbilitySummaries(assignedAbilities)
             };
+        }
+
+        private static List<object> ToAbilitySummaries(IReadOnlyList<AbilityDefinition> abilities)
+        {
+            var summaries = new List<object>();
+            if (abilities == null)
+            {
+                return summaries;
+            }
+
+            for (var i = 0; i < abilities.Count; i++)
+            {
+                var ability = abilities[i];
+                if (ability == null)
+                {
+                    continue;
+                }
+
+                summaries.Add(new
+                {
+                    key = ability.AbilityKey,
+                    name = ability.DisplayName,
+                    usage = ability.Usage.ToString()
+                });
+            }
+
+            return summaries;
         }
 
         private static object ToPositionSummary(GridPosition position)
@@ -487,6 +655,37 @@ namespace ReactionTactics.Editor
             {
                 get { return UnitAssetFolderPath + "/" + StatsAssetName + ".asset"; }
             }
+        }
+
+        private readonly struct AbilityAssetSpec
+        {
+            public AbilityAssetSpec(string abilityKey, string assetName)
+            {
+                AbilityKey = abilityKey;
+                AssetName = assetName;
+            }
+
+            public string AbilityKey { get; }
+
+            public string AssetName { get; }
+
+            public string AssetPath
+            {
+                get { return AbilityAssetFolderPath + "/" + AssetName + ".asset"; }
+            }
+        }
+
+        private sealed class UnitAbilityLoadoutSpec
+        {
+            public UnitAbilityLoadoutSpec(string statsAssetName, params string[] abilityKeys)
+            {
+                StatsAssetName = statsAssetName;
+                AbilityKeys = abilityKeys ?? Array.Empty<string>();
+            }
+
+            public string StatsAssetName { get; }
+
+            public IReadOnlyList<string> AbilityKeys { get; }
         }
     }
 }
