@@ -4458,7 +4458,7 @@ unity-batch "$PWD" -executeMethod ReactionTactics.Editor.BuildPrototype.PerformB
 
 ## 152 — Add prototype playtest checklist
 
-Status: TODO
+Status: DONE
 
 **Commit:** `docs: add prototype playtest checklist`
 
