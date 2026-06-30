@@ -1808,7 +1808,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 061 — Add initiative and active-turn order
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add active unit turn order`
 
