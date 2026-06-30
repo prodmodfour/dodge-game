@@ -54,9 +54,9 @@ namespace ReactionTactics.Tests.EditMode.Turns
                 Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ReactionWindow));
                 Assert.That(fixture.Manager.CurrentState.ActiveUnit, Is.SameAs(actor));
                 Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.SameAs(enemy));
-                Assert.That(fixture.Selection.SelectedUnit, Is.SameAs(actor));
-                Assert.That(fixture.Selection.SelectedActionMode, Is.EqualTo(SelectionActionMode.Melee));
-                Assert.That(fixture.Selection.SelectedTarget.Unit, Is.SameAs(enemy));
+                Assert.That(fixture.Selection.SelectedUnit, Is.SameAs(enemy), "Reaction focus should move input to the current reactor while the pending action waits.");
+                Assert.That(fixture.Selection.SelectedActionMode, Is.EqualTo(SelectionActionMode.None));
+                Assert.That(fixture.Selection.SelectedTarget.HasTarget, Is.False);
                 Assert.That(resolvedEvents.Count, Is.EqualTo(0));
 
                 Assert.That(fixture.InputRouter.RequestPassOrEndTurn().IsSuccess, Is.True);

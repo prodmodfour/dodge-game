@@ -4317,7 +4317,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 147 — Run full EditMode suite and fix failures
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: fix editmode suite before prototype build`
 

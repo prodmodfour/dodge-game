@@ -105,8 +105,11 @@ public sealed class AiConeActionTests
             Assert.That(passResult.IsSuccess, Is.True, passResult.ErrorMessage);
             Assert.That(fixture.Manager.CurrentReactionWindow, Is.Null);
             Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ActiveTurn));
-            Assert.That(fixture.Manager.CurrentState.ActiveUnit, Is.SameAs(enemy));
+            Assert.That(fixture.Manager.CurrentState.ActiveUnit, Is.SameAs(player));
+            Assert.That(fixture.Manager.CurrentState.CurrentRound, Is.EqualTo(2));
+            Assert.That(fixture.Manager.CurrentState.PendingActionIntent, Is.Null);
             Assert.That(player.CurrentHP, Is.EqualTo(player.MaxHP - fixture.ConeShot.Damage));
+            Assert.That(enemy.CurrentAP, Is.EqualTo(enemy.MaxAP), "AI handoff should end the enemy turn and refresh AP at the next round start.");
         }
     }
 
