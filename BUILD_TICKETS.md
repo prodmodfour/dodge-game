@@ -3617,7 +3617,7 @@ unity-ctrl --project "$PWD" test --filter AiMovementTests
 
 ## 123 — Implement AI melee action
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: let ai use melee attacks`
 

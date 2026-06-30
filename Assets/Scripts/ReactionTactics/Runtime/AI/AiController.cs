@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ReactionTactics.Actions;
 using ReactionTactics.Core;
 using ReactionTactics.Grid;
+using ReactionTactics.Input;
 using ReactionTactics.Pathfinding;
 using ReactionTactics.Turns;
 using ReactionTactics.Units;
@@ -12,15 +13,17 @@ namespace ReactionTactics.AI
 {
     /// <summary>
     /// Deterministic shell controller for prototype enemy units. It exposes stable
-    /// target selection for later action choices, advances active units toward targets
-    /// when no attack currently validates, and still passes reaction turns until
-    /// reaction-specific AI tickets are implemented.
+    /// target selection for later action choices, declares adjacent melee attacks,
+    /// advances active units toward targets when no attack currently validates, and
+    /// still passes reaction turns until reaction-specific AI tickets are implemented.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class AiController : MonoBehaviour
     {
         public const int DefaultTargetSelectionVerticalWeight = 1;
         public const int DefaultReactionApReserve = 2;
+        public const string DefaultMeleeSlashAbilityKey = "melee_slash";
+        public const string DefaultMeleeSlashDisplayName = "Melee Slash";
 
         [SerializeField]
         [Tooltip("Team controlled by this deterministic prototype AI controller.")]
@@ -371,9 +374,65 @@ namespace ReactionTactics.AI
             return false;
         }
 
+        public TacticalResult<TacticalUnit> TryChooseMeleeAttackTarget(
+            TacticalUnit actor,
+            IEnumerable<TacticalUnit> candidates,
+            IGridMap map,
+            CombatState combatState)
+        {
+            var contextResult = ValidateMeleeAttackChoiceContext(actor, candidates, map, combatState);
+            if (contextResult.IsFailure)
+            {
+                return TacticalResult<TacticalUnit>.Failure(contextResult.ErrorMessage);
+            }
+
+            var abilityResult = TryResolveMeleeSlashAbility(actor);
+            if (abilityResult.IsFailure)
+            {
+                return TacticalResult<TacticalUnit>.Failure(abilityResult.ErrorMessage);
+            }
+
+            var ability = abilityResult.Value;
+            TacticalUnit bestTarget = null;
+            foreach (var candidate in candidates)
+            {
+                if (!IsSelectableHostileTarget(actor, candidate))
+                {
+                    continue;
+                }
+
+                var actionTarget = ActionTarget.ForUnit(candidate);
+                var validationContext = new AbilityTargetValidationContext(
+                    actor,
+                    ability,
+                    actionTarget,
+                    AbilityUsage.Action,
+                    combatState,
+                    map);
+                if (AbilityTargetValidator.Instance.ValidateTarget(validationContext).IsFailure)
+                {
+                    continue;
+                }
+
+                if (bestTarget == null || CompareTargetCandidates(actor, candidate, bestTarget) < 0)
+                {
+                    bestTarget = candidate;
+                }
+            }
+
+            if (bestTarget == null)
+            {
+                return TacticalResult<TacticalUnit>.Failure(
+                    $"No valid in-range hostile target is available for {DescribeUnit(actor)} to use {ability.DisplayName}.");
+            }
+
+            return TacticalResult<TacticalUnit>.Success(bestTarget);
+        }
+
         /// <summary>
-        /// Active-turn AI behavior: if no attack currently validates, advance toward
-        /// the nearest hostile with conservative movement, then end the active turn.
+        /// Active-turn AI behavior: declare an adjacent melee attack when possible;
+        /// otherwise, if no attack currently validates, advance toward the nearest
+        /// hostile with conservative movement, then end the active turn.
         /// </summary>
         public TacticalResult TakeActiveTurn()
         {
@@ -381,8 +440,9 @@ namespace ReactionTactics.AI
         }
 
         /// <summary>
-        /// Active-turn AI behavior: if no attack currently validates, advance toward
-        /// the nearest hostile with conservative movement, then end the active turn.
+        /// Active-turn AI behavior: declare an adjacent melee attack when possible;
+        /// otherwise, if no attack currently validates, advance toward the nearest
+        /// hostile with conservative movement, then end the active turn.
         /// </summary>
         public TacticalResult TakeActiveTurn(CombatManager manager)
         {
@@ -393,6 +453,30 @@ namespace ReactionTactics.AI
             }
 
             var activeUnit = manager.CurrentState.ActiveUnit;
+            var meleeResult = TryDeclareMeleeAttackAtNearestTarget(manager, activeUnit);
+            if (meleeResult.IsFailure)
+            {
+                return TacticalResult.Failure(meleeResult.ErrorMessage);
+            }
+
+            if (meleeResult.Value)
+            {
+                if (manager.CurrentState.IsCombatOver)
+                {
+                    return TacticalResult.Success();
+                }
+
+                if (manager.CurrentState.IsActiveUnitPhase
+                    && ReferenceEquals(manager.CurrentState.ActiveUnit, activeUnit))
+                {
+                    LogDecision($"AI controlling {activeUnit.DisplayName} {activeUnit.UnitId} [{activeUnit.Team}] ended its active turn after its melee action resolved without waiting for player input.");
+                    return manager.EndActiveTurn();
+                }
+
+                LogDecision($"AI controlling {activeUnit.DisplayName} {activeUnit.UnitId} [{activeUnit.Team}] declared a melee action and is waiting for reactions to finish.");
+                return TacticalResult.Success();
+            }
+
             var movementResult = TryMoveTowardNearestTarget(manager, activeUnit);
             if (movementResult.IsFailure)
             {
@@ -525,28 +609,149 @@ namespace ReactionTactics.AI
         {
             if (manager.GridManager == null)
             {
-                return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot active move because no {nameof(GridManager)} is assigned.");
+                return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot evaluate active choices because no {nameof(GridManager)} is assigned.");
             }
 
             if (!manager.GridManager.HasCurrentMap)
             {
                 if (manager.GridManager.MapDefinition == null)
                 {
-                    return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot active move because {nameof(GridManager)} has no map definition assigned.");
+                    return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot evaluate active choices because {nameof(GridManager)} has no map definition assigned.");
                 }
 
                 if (!manager.GridManager.RebuildMap())
                 {
-                    return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot active move because {nameof(GridManager)} could not build a current map.");
+                    return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot evaluate active choices because {nameof(GridManager)} could not build a current map.");
                 }
             }
 
             if (manager.GridManager.CurrentMap == null)
             {
-                return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot active move because {nameof(GridManager)} has no current map.");
+                return TacticalResult<IGridMap>.Failure($"{nameof(AiController)} cannot evaluate active choices because {nameof(GridManager)} has no current map.");
             }
 
             return TacticalResult<IGridMap>.Success(manager.GridManager.CurrentMap);
+        }
+
+        private TacticalResult<bool> TryDeclareMeleeAttackAtNearestTarget(CombatManager manager, TacticalUnit activeUnit)
+        {
+            if (manager.UnitRegistry == null)
+            {
+                LogDecision($"AI could not evaluate melee actions for {DescribeUnit(activeUnit)} because no unit registry is assigned.");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var mapResult = ResolveCurrentMap(manager);
+            if (mapResult.IsFailure)
+            {
+                LogDecision($"AI could not evaluate melee actions for {DescribeUnit(activeUnit)}: {mapResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var targetResult = TryChooseMeleeAttackTarget(
+                activeUnit,
+                manager.UnitRegistry.GetLivingUnits(),
+                mapResult.Value,
+                manager.CurrentState);
+            if (targetResult.IsFailure)
+            {
+                LogDecision($"AI found no melee action for {DescribeUnit(activeUnit)}: {targetResult.ErrorMessage}");
+                return TacticalResult<bool>.Success(false);
+            }
+
+            var target = targetResult.Value;
+            var previousAP = activeUnit.CurrentAP;
+            var request = new PlayerCommandRequest(
+                PlayerCommandType.ConfirmTarget,
+                activeUnit,
+                SelectionActionMode.Melee,
+                SelectionTarget.ForUnit(target),
+                SelectionState.Empty);
+            var declarationResult = manager.DeclareAndResolveSelectedAction(request);
+            if (declarationResult.IsFailure)
+            {
+                return TacticalResult<bool>.Failure(declarationResult.ErrorMessage);
+            }
+
+            LogDecision(
+                $"AI declared {DefaultMeleeSlashDisplayName} with {DescribeUnit(activeUnit)} against {DescribeUnit(target)}; AP {previousAP}->{activeUnit.CurrentAP}.");
+            return TacticalResult<bool>.Success(true);
+        }
+
+        private static TacticalResult<AbilityDefinition> TryResolveMeleeSlashAbility(TacticalUnit actor)
+        {
+            if (actor == null)
+            {
+                return TacticalResult<AbilityDefinition>.Failure("Cannot choose a melee action because no acting unit was provided.");
+            }
+
+            var loadout = actor.GetComponent<UnitAbilityLoadout>();
+            if (loadout == null)
+            {
+                return TacticalResult<AbilityDefinition>.Failure($"{DescribeUnit(actor)} has no ability loadout for {DefaultMeleeSlashDisplayName}.");
+            }
+
+            AbilityDefinition fallback = null;
+            var actionAbilities = loadout.GetActionAbilities();
+            for (var i = 0; i < actionAbilities.Count; i += 1)
+            {
+                var ability = actionAbilities[i];
+                if (!IsMeleeAttackAbility(ability))
+                {
+                    continue;
+                }
+
+                if (IsDefaultMeleeSlashAbility(ability))
+                {
+                    return TacticalResult<AbilityDefinition>.Success(ability);
+                }
+
+                if (fallback == null)
+                {
+                    fallback = ability;
+                }
+            }
+
+            if (fallback != null)
+            {
+                return TacticalResult<AbilityDefinition>.Success(fallback);
+            }
+
+            return TacticalResult<AbilityDefinition>.Failure($"{DescribeUnit(actor)} has no active {DefaultMeleeSlashDisplayName} ability assigned.");
+        }
+
+        private static TacticalResult ValidateMeleeAttackChoiceContext(
+            TacticalUnit actor,
+            IEnumerable<TacticalUnit> candidates,
+            IGridMap map,
+            CombatState combatState)
+        {
+            if (actor == null)
+            {
+                return TacticalResult.Failure("Cannot choose an AI melee target because no acting unit was provided.");
+            }
+
+            if (candidates == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI melee target for {DescribeUnit(actor)} because no candidate units were provided.");
+            }
+
+            if (map == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI melee target for {DescribeUnit(actor)} because no grid map is available.");
+            }
+
+            if (combatState == null)
+            {
+                return TacticalResult.Failure($"Cannot choose an AI melee target for {DescribeUnit(actor)} because combat state is missing.");
+            }
+
+            if (!actor.IsAlive)
+            {
+                return TacticalResult.Failure($"{DescribeUnit(actor)} cannot choose an AI melee target because it is defeated.");
+            }
+
+            return TacticalResult.Success();
         }
 
         private int CompareTargetCandidates(TacticalUnit actor, TacticalUnit left, TacticalUnit right)
@@ -659,6 +864,21 @@ namespace ReactionTactics.AI
                     || ability.Shape == AbilityShape.SingleTarget
                     || ability.Shape == AbilityShape.Cone
                     || ability.Shape == AbilityShape.Radius);
+        }
+
+        private static bool IsMeleeAttackAbility(AbilityDefinition ability)
+        {
+            return ability != null
+                && ability.CanBeUsedAsAction
+                && ability.Shape == AbilityShape.Melee
+                && ability.Damage > 0;
+        }
+
+        private static bool IsDefaultMeleeSlashAbility(AbilityDefinition ability)
+        {
+            return ability != null
+                && (string.Equals(ability.AbilityKey, DefaultMeleeSlashAbilityKey, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(ability.DisplayName, DefaultMeleeSlashDisplayName, StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool TryCreateAttackTarget(

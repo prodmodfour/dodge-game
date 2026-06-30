@@ -67,7 +67,7 @@ Reactions do not open full nested reaction windows in the prototype. A reaction 
 
 ## Solo AI shell
 
-When an `AiController` is present on the combat systems object, the combat manager delegates Enemy-team active turns and Enemy-team reaction turns to it. The initial deterministic AI shell only passes: active turns end immediately and reaction turns use Pass, so enemy-controlled phases do not require player input while later AI tickets add target selection, movement, attacks, and defensive choices.
+When an `AiController` is present on the combat systems object, the combat manager delegates Enemy-team active turns and Enemy-team reaction turns to it. The deterministic AI currently selects the nearest hostile target, declares `Melee Slash` through the normal action declaration flow when an adjacent hostile is in range and AP is available, otherwise moves toward the nearest hostile while preserving a small reaction AP reserve. Enemy reaction turns still use Pass until later AI reaction tickets add movement and brace decisions.
 
 ## Option A melee timing
 
