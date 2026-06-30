@@ -3811,7 +3811,7 @@ unity-ctrl --project "$PWD" test --filter Ai
 
 ## 130 — Add scenario definition ScriptableObject
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add scenario definition asset type`
 
