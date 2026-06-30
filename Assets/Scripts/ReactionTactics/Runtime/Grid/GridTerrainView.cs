@@ -10,6 +10,8 @@ namespace ReactionTactics.Grid
     public sealed class GridTerrainView : MonoBehaviour
     {
         private const string TileNamePrefix = "Grid Tile";
+        private const float DefaultTileHorizontalScaleFactor = 0.92f;
+        private const float MinimumTileHorizontalScaleFactor = 0.5f;
 
         [SerializeField]
         [Tooltip("Grid manager that owns the active map and grid metrics. If left empty, the scene is searched at generation time.")]
@@ -26,6 +28,11 @@ namespace ReactionTactics.Grid
         [SerializeField]
         [Tooltip("Remove previously generated tile children before generating a fresh terrain view.")]
         private bool clearExistingTiles = true;
+
+        [SerializeField]
+        [Range(MinimumTileHorizontalScaleFactor, 1f)]
+        [Tooltip("Horizontal scale applied to each tile relative to the grid cell size. Values below 1 leave small seams between cells for readability.")]
+        private float tileHorizontalScaleFactor = DefaultTileHorizontalScaleFactor;
 
         [SerializeField]
         [Tooltip("Authored material for walkable terrain cells. A generated fallback color is used when this is empty.")]
@@ -81,6 +88,11 @@ namespace ReactionTactics.Grid
         public IReadOnlyList<GridTileView> GeneratedTiles
         {
             get { return generatedTiles; }
+        }
+
+        public float TileHorizontalScaleFactor
+        {
+            get { return SanitizeTileHorizontalScaleFactor(tileHorizontalScaleFactor); }
         }
 
         public Material WalkableMaterial
@@ -216,6 +228,11 @@ namespace ReactionTactics.Grid
             DestroyOwnedMaterial(ref generatedLineOfSightBlockerMaterial);
         }
 
+        private void OnValidate()
+        {
+            tileHorizontalScaleFactor = SanitizeTileHorizontalScaleFactor(tileHorizontalScaleFactor);
+        }
+
         private GridManager ResolveGridManager()
         {
             if (gridManager != null)
@@ -238,7 +255,8 @@ namespace ReactionTactics.Grid
             var tileObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
             tileObject.name = $"{TileNamePrefix} {cell.Position}";
             tileObject.transform.SetParent(parent, worldPositionStays: false);
-            tileObject.transform.localScale = new Vector3(metrics.CellSize, 1f, metrics.CellSize);
+            var horizontalScale = metrics.CellSize * TileHorizontalScaleFactor;
+            tileObject.transform.localScale = new Vector3(horizontalScale, 1f, horizontalScale);
             tileObject.transform.position = CalculateTileWorldPosition(cell, metrics);
 
             var tileView = tileObject.AddComponent<GridTileView>();
@@ -267,6 +285,16 @@ namespace ReactionTactics.Grid
         private static bool IsBlockedOrUnwalkable(GridCell cell)
         {
             return !cell.Walkable || cell.BlocksMovement;
+        }
+
+        private static float SanitizeTileHorizontalScaleFactor(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+            {
+                return DefaultTileHorizontalScaleFactor;
+            }
+
+            return Mathf.Clamp(value, MinimumTileHorizontalScaleFactor, 1f);
         }
 
         private Material GetOrCreateWalkableMaterial()

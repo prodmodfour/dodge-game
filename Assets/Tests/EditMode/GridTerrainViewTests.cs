@@ -36,9 +36,10 @@ namespace ReactionTactics.Tests.EditMode
                 Assert.That(raisedTile.PickingCollider, Is.Not.Null);
                 Assert.That(raisedTile.TargetRenderer, Is.Not.Null);
                 Assert.That(raisedTile.transform.parent, Is.SameAs(gridRoot.transform));
-                Assert.That(raisedTile.transform.localScale.x, Is.EqualTo(manager.Metrics.CellSize).Within(Tolerance));
+                var expectedHorizontalScale = manager.Metrics.CellSize * terrainView.TileHorizontalScaleFactor;
+                Assert.That(raisedTile.transform.localScale.x, Is.EqualTo(expectedHorizontalScale).Within(Tolerance));
                 Assert.That(raisedTile.transform.localScale.y, Is.EqualTo(GridTileView.CalculateVisualHeight(raisedCell, manager.Metrics)).Within(Tolerance));
-                Assert.That(raisedTile.transform.localScale.z, Is.EqualTo(manager.Metrics.CellSize).Within(Tolerance));
+                Assert.That(raisedTile.transform.localScale.z, Is.EqualTo(expectedHorizontalScale).Within(Tolerance));
                 AssertVector3(raisedTile.transform.position, GridTerrainView.CalculateTileWorldPosition(raisedCell, manager.Metrics));
             }
             finally

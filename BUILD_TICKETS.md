@@ -3989,7 +3989,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 136 — Add prototype visuals polish pass
 
-Status: TODO
+Status: DONE
 
 **Commit:** `art: polish prototype scene readability`
 

@@ -22,6 +22,7 @@ namespace ReactionTactics.Editor
         private const string HighlightMaterialPath = "Assets/Materials/PrototypeGridHighlight.mat";
         private const string DangerMaterialPath = "Assets/Materials/PrototypeGridDanger.mat";
         private const string SafeMaterialPath = "Assets/Materials/PrototypeGridSafe.mat";
+        private const float PrototypeTileHorizontalScaleFactor = 0.92f;
 
         public sealed class Parameters
         {
@@ -211,6 +212,7 @@ namespace ReactionTactics.Editor
             SetObjectReference(serializedObject, "tileParent", tileParent);
             SetBool(serializedObject, "generateOnStart", true);
             SetBool(serializedObject, "clearExistingTiles", true);
+            SetFloat(serializedObject, "tileHorizontalScaleFactor", PrototypeTileHorizontalScaleFactor);
             SetObjectReference(serializedObject, "walkableMaterial", walkableMaterial);
             SetObjectReference(serializedObject, "blockedMaterial", blockedMaterial);
             SetObjectReference(serializedObject, "lineOfSightBlockerMaterial", lineOfSightBlockerMaterial);
@@ -241,6 +243,17 @@ namespace ReactionTactics.Editor
             }
 
             property.boolValue = value;
+        }
+
+        private static void SetFloat(SerializedObject serializedObject, string propertyName, float value)
+        {
+            var property = serializedObject.FindProperty(propertyName);
+            if (property == null)
+            {
+                throw new InvalidOperationException($"Serialized property '{propertyName}' was not found on '{serializedObject.targetObject.name}'.");
+            }
+
+            property.floatValue = value;
         }
 
         private static string GetScenePath(GameObject gameObject)

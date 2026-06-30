@@ -20,12 +20,12 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
+  m_AmbientSkyColor: {r: 0.38, g: 0.42, b: 0.48, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
-  m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
+  m_AmbientMode: 3
+  m_SubtractiveShadowColor: {r: 0.2, g: 0.22, b: 0.28, a: 1}
   m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
@@ -237,7 +237,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 0.08, g: 0.1, b: 0.14, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -258,9 +258,9 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.1
-  far clip plane: 1000
-  field of view: 60
+  near clip plane: 0.05
+  far clip plane: 120
+  field of view: 50
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -286,8 +286,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 737579227}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.4266001, y: 0.3394444, z: -0.17670357, w: 0.81949115}
-  m_LocalPosition: {x: -1.8099298, y: 12.734351, z: -1.8099308}
+  m_LocalRotation: {x: 0.45260876, y: 0.31343567, z: -0.17374024, w: 0.81652784}
+  m_LocalPosition: {x: -1.4384513, y: 14.006937, z: -2.0400124}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -308,17 +308,17 @@ MonoBehaviour:
   gridManager: {fileID: 1092979091}
   frameGridOnStart: 1
   focusPoint: {x: 4, y: 1, z: 4}
-  yawDegrees: 45
-  pitchDegrees: 55
+  yawDegrees: 42
+  pitchDegrees: 58
   minimumPitchDegrees: 35
-  maximumPitchDegrees: 70
-  zoomDistance: 14.325
+  maximumPitchDegrees: 72
+  zoomDistance: 15.337501
   minimumZoomDistance: 4
-  maximumZoomDistance: 24
+  maximumZoomDistance: 30
   panSpeed: 6
   rotationSpeed: 90
   zoomSpeed: 4
-  framePaddingCells: 1.5
+  framePaddingCells: 2.25
 --- !u!1 &914327697
 GameObject:
   m_ObjectHideFlags: 0
@@ -368,6 +368,7 @@ MonoBehaviour:
   tileParent: {fileID: 914327698}
   generateOnStart: 1
   clearExistingTiles: 1
+  tileHorizontalScaleFactor: 0.92
   walkableMaterial: {fileID: 2100000, guid: 8da62da363a8262ba81aa7c6191ffe67, type: 2}
   blockedMaterial: {fileID: 2100000, guid: 7ea7df9148c22164c98a65b12fac3da1, type: 2}
   lineOfSightBlockerMaterial: {fileID: 2100000, guid: c6d01417360a439a0a1e789d3562f94d, type: 2}
@@ -956,8 +957,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 13
   m_Type: 1
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 1
+  m_Color: {r: 1, g: 0.94, b: 0.82, a: 1}
+  m_Intensity: 1.15
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -966,7 +967,7 @@ Light:
     m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
-    m_Strength: 1
+    m_Strength: 0.62
     m_Bias: 0.05
     m_NormalBias: 0.4
     m_NearPlane: 0.2
@@ -1019,7 +1020,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1517295788}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.40821794, y: -0.23456973, z: 0.10938166, w: 0.8754261}
+  m_LocalRotation: {x: 0.40305823, y: -0.27253202, z: 0.12708378, w: 0.8643611}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0

@@ -168,6 +168,7 @@ namespace ReactionTactics.Units
             try
             {
                 unit.Initialize(unitId, team, statsDefinition, cellResult.Value.Position);
+                ApplyUnitVisuals(unit);
                 SnapUnitToCell(unit, cellResult.Value.Position, gridMetrics, statsDefinition);
 
                 var registerResult = unitRegistry.Register(unit);
@@ -311,6 +312,15 @@ namespace ReactionTactics.Units
             if (unitIdGenerator == null)
             {
                 unitIdGenerator = new UnitIdGenerator(FirstUnitId);
+            }
+        }
+
+        private static void ApplyUnitVisuals(TacticalUnit unit)
+        {
+            var teamVisualView = unit != null ? unit.GetComponent<UnitTeamVisualView>() : null;
+            if (teamVisualView != null)
+            {
+                teamVisualView.ApplyTeamVisuals();
             }
         }
 

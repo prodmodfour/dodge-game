@@ -44,7 +44,21 @@ namespace ReactionTactics.Editor
             AbilityAssetFolderPath + "/Fireball.asset",
             AbilityAssetFolderPath + "/Brace.asset",
             AbilityAssetFolderPath + "/PassReaction.asset",
-            DefaultScenarioPath
+            DefaultScenarioPath,
+            "Assets/Materials/PrototypeGridWalkable.mat",
+            "Assets/Materials/PrototypeGridBlocked.mat",
+            "Assets/Materials/PrototypeGridLineOfSightBlocker.mat",
+            "Assets/Materials/PrototypeGridHighlight.mat",
+            "Assets/Materials/PrototypeGridDanger.mat",
+            "Assets/Materials/PrototypeGridSafe.mat",
+            "Assets/Materials/PrototypeUnitBody.mat",
+            "Assets/Materials/PrototypeUnitMarker.mat",
+            "Assets/Materials/PrototypeTeamPlayer.mat",
+            "Assets/Materials/PrototypeTeamEnemy.mat",
+            "Assets/Materials/PrototypeTeamPlayerMarker.mat",
+            "Assets/Materials/PrototypeTeamEnemyMarker.mat",
+            "Assets/Materials/PrototypeActiveMarker.mat",
+            "Assets/Materials/PrototypeReactionMarker.mat"
         };
 
         public sealed class Parameters
@@ -88,6 +102,8 @@ namespace ReactionTactics.Editor
 
                 var hudSummary = EnsureCombatHud(scenePath);
                 steps.Add(new StepSummary("combatHud", hudSummary.Message));
+
+                steps.Add(RunStep("visualPolish", () => PrototypeVisualsPolishTool.HandleCommand(BuildSceneParameters(scenePath))));
 
                 var finalCombatSystems = EnsurePrototypeCombatSystems(scenePath);
                 steps.Add(new StepSummary("combatSystemsFinal", finalCombatSystems.Message));
