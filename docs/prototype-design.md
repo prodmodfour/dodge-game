@@ -70,6 +70,8 @@ Melee uses declaration-in-range, resolution-after-reactions timing:
 - The sampled line resolves each horizontal coordinate to the map cell's actual terrain height, but height differences do not bend or block sight by themselves.
 - Intermediate cells marked `blocksLineOfSight` block ranged targeting through them.
 - Origin and target cells do not block their own line; only missing cells or sight blockers between them stop the query.
+- Cone and AoE declarations require line of sight from the acting unit to the chosen target cell before AP is spent, unless a future special ability explicitly ignores line of sight.
+- The recorded AoE or cone footprint is not retroactively changed by line-of-sight checks after reactions; final positions determine who is hit.
 
 ## Ranged cone timing
 

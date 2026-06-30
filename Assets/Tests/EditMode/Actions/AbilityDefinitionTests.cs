@@ -26,6 +26,7 @@ namespace ReactionTactics.Tests.EditMode.Actions
                 Assert.That(definition.CanBeUsedAsAction, Is.True);
                 Assert.That(definition.CanBeUsedAsReaction, Is.False);
                 Assert.That(definition.TriggersReactions, Is.False);
+                Assert.That(definition.IgnoresLineOfSight, Is.False);
             }
             finally
             {
@@ -51,7 +52,8 @@ namespace ReactionTactics.Tests.EditMode.Actions
                     radius: 2,
                     damage: 4,
                     triggersReactions: true,
-                    description: "Telegraphed area attack.");
+                    description: "Telegraphed area attack.",
+                    ignoresLineOfSight: true);
 
                 Assert.That(definition.ValidateDefinition().IsSuccess, Is.True);
                 Assert.That(definition.AbilityKey, Is.EqualTo("fireball"));
@@ -64,6 +66,7 @@ namespace ReactionTactics.Tests.EditMode.Actions
                 Assert.That(definition.Radius, Is.EqualTo(2));
                 Assert.That(definition.Damage, Is.EqualTo(4));
                 Assert.That(definition.TriggersReactions, Is.True);
+                Assert.That(definition.IgnoresLineOfSight, Is.True);
                 Assert.That(definition.IsTelegraphed, Is.True);
                 Assert.That(definition.Description, Is.EqualTo("Telegraphed area attack."));
             }

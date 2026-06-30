@@ -2685,7 +2685,7 @@ unity-ctrl --project "$PWD" test --filter LineOfSightTests
 
 ## 091 — Integrate line of sight into ranged validation
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: require line of sight for ranged declarations`
 

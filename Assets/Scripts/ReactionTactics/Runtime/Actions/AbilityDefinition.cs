@@ -68,6 +68,10 @@ namespace ReactionTactics.Actions
         private bool triggersReactions;
 
         [SerializeField]
+        [Tooltip("If true, ranged target validation skips terrain line-of-sight blockers. Defaults false; reserved for future special abilities.")]
+        private bool ignoresLineOfSight;
+
+        [SerializeField]
         [TextArea(2, 5)]
         [Tooltip("Short rules text for UI, tooltips, and designer notes.")]
         private string description = string.Empty;
@@ -122,6 +126,11 @@ namespace ReactionTactics.Actions
             get { return triggersReactions; }
         }
 
+        public bool IgnoresLineOfSight
+        {
+            get { return ignoresLineOfSight; }
+        }
+
         public string Description
         {
             get { return description ?? string.Empty; }
@@ -164,7 +173,8 @@ namespace ReactionTactics.Actions
             int radius,
             int damage,
             bool triggersReactions,
-            string description = "")
+            string description = "",
+            bool ignoresLineOfSight = false)
         {
             var validationErrors = CollectValidationErrors(
                 abilityKey,
@@ -194,6 +204,7 @@ namespace ReactionTactics.Actions
             this.damage = damage;
             this.triggersReactions = triggersReactions;
             this.description = description ?? string.Empty;
+            this.ignoresLineOfSight = ignoresLineOfSight;
         }
 
         /// <summary>

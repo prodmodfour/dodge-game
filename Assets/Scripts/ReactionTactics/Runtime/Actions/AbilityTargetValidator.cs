@@ -1,6 +1,7 @@
 using System;
 using ReactionTactics.Core;
 using ReactionTactics.Grid;
+using ReactionTactics.Targeting;
 using ReactionTactics.Turns;
 using ReactionTactics.Units;
 
@@ -82,6 +83,12 @@ namespace ReactionTactics.Actions
             if (rangeResult.IsFailure)
             {
                 return rangeResult;
+            }
+
+            var lineOfSightResult = ValidateLineOfSight(context);
+            if (lineOfSightResult.IsFailure)
+            {
+                return lineOfSightResult;
             }
 
             return TacticalResult.Success();
@@ -410,6 +417,29 @@ namespace ReactionTactics.Actions
                 $"{DescribeAbility(context.Ability)} requires a hostile target, but {DescribeUnit(context.Target.TargetUnit)} is friendly to {DescribeUnit(context.Actor)}.");
         }
 
+        private static TacticalResult ValidateLineOfSight(AbilityTargetValidationContext context)
+        {
+            if (!RequiresLineOfSight(context.Ability) || context.Ability.IgnoresLineOfSight)
+            {
+                return TacticalResult.Success();
+            }
+
+            if (!context.Target.HasTargetCell)
+            {
+                return TacticalResult.Success();
+            }
+
+            var actorPosition = context.Actor.CurrentGridPosition;
+            var targetCell = context.Target.TargetCell;
+            if (!LineOfSightService.TryFindBlockingCell(actorPosition, targetCell, context.Map, out var blockingPosition))
+            {
+                return TacticalResult.Success();
+            }
+
+            return TacticalResult.Failure(
+                $"{DescribeAbility(context.Ability)} requires line of sight from {DescribeUnit(context.Actor)} at {actorPosition} to target cell {targetCell}, but sight is blocked at {blockingPosition}.");
+        }
+
         private static TacticalResult ValidateRange(AbilityTargetValidationContext context)
         {
             if (context.Ability.Shape == AbilityShape.Self)
@@ -492,6 +522,11 @@ namespace ReactionTactics.Actions
 
             return TacticalResult.Failure(
                 $"{DescribeAbility(context.Ability)} target cell {targetCell} is {distance} cells away from {DescribeUnit(context.Actor)}, beyond range {range}.");
+        }
+
+        private static bool RequiresLineOfSight(AbilityDefinition ability)
+        {
+            return ability.Shape == AbilityShape.Cone || ability.Shape == AbilityShape.Radius;
         }
 
         private static AbilityTargetRelationship ResolveTargetRelationship(AbilityTargetValidationContext context)
