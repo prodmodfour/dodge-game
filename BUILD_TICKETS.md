@@ -2,7 +2,7 @@
 
 This backlog is written for a coding agent using the `pi-unity-skill` workflow. Each ticket is intended to be a single commit-sized piece of work. Work through the tickets in order unless a ticket is explicitly marked as parallel-safe.
 
-AUTOMATION_STATUS: NOT_DONE
+AUTOMATION_STATUS: DONE
 
 Ticket statuses:
 
@@ -4542,7 +4542,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 155 — Tag prototype-complete checklist commit
 
-Status: TODO
+Status: DONE
 
 **Commit:** `docs: mark reaction tactics prototype complete`
 
