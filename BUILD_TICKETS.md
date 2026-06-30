@@ -1864,7 +1864,7 @@ unity-ctrl --project "$PWD" test --filter RoundApRefreshTests
 
 ## 063 — Add combat manager shell
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add combat manager shell`
 

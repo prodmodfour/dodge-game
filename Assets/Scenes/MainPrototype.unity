@@ -801,6 +801,8 @@ GameObject:
   - component: {fileID: 1092979092}
   - component: {fileID: 1092979094}
   - component: {fileID: 1092979093}
+  - component: {fileID: 1092979096}
+  - component: {fileID: 1092979095}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -897,6 +899,36 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Input.SelectionController
   gridPicker: {fileID: 1092979092}
+--- !u!114 &1092979095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1092979089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec8b0ed15eb61a753bc1401bffd3bd47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Turns.CombatManager
+  unitRegistry: {fileID: 1494555728}
+  gridManager: {fileID: 1092979091}
+  inputRouter: {fileID: 1092979093}
+  eventBus: {fileID: 1092979096}
+  startCombatOnStart: 1
+  logCombatStart: 1
+--- !u!114 &1092979096
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1092979089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9fd7600c02e44734bb69c17852b51f27, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Turns.CombatEventBus
 --- !u!1 &1321217882
 GameObject:
   m_ObjectHideFlags: 0
