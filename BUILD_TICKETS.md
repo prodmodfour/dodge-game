@@ -2943,7 +2943,7 @@ unity-ctrl --project "$PWD" test --filter ReactionMoveCommandTests
 
 ## 100 — Add active movement command
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: allow active movement on unit turn`
 

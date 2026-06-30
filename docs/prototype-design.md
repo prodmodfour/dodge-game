@@ -27,6 +27,8 @@ The prototype is about deterministic tactical timing. Attacks are avoided by spe
 - Actions are commands a unit can use only on its own active turn.
 - Only the current active unit may declare an active action.
 - Legal actions spend AP when declared.
+- Active movement is an own-turn command that spends AP per path cost, updates the unit's grid position, and returns to the active turn.
+- Simple active movement does not open a reaction window in this prototype.
 - A declared action records an intent: actor, origin position, target data, affected cells when applicable, and declaration sequence.
 - Actions that trigger reactions resolve only after their reaction window closes.
 

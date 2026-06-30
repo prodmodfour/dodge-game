@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ReactionTactics.Actions;
+using ReactionTactics.Commands;
 using ReactionTactics.Core;
 using ReactionTactics.Grid;
 using ReactionTactics.Input;
@@ -259,6 +260,68 @@ namespace ReactionTactics.Turns
             }
 
             return StartNextRoundAfterTurnOrderEnds(previousActiveUnit);
+        }
+
+        /// <summary>
+        /// Moves the current active unit to a reachable destination, spends movement AP,
+        /// and keeps the combat loop on that unit's active turn.
+        /// </summary>
+        public TacticalResult MoveActiveUnit(GridPosition destination)
+        {
+            return MoveActiveUnit(currentState.ActiveUnit, destination);
+        }
+
+        /// <summary>
+        /// Moves a specific unit only when it is the active unit in the active-turn phase.
+        /// Simple active movement does not open a reaction window in this prototype.
+        /// </summary>
+        public TacticalResult MoveActiveUnit(TacticalUnit unit, GridPosition destination)
+        {
+            if (unitRegistry == null)
+            {
+                return TacticalResult.Failure($"Cannot active move because {nameof(UnitRegistry)} is missing.");
+            }
+
+            var mapResult = ResolveCurrentMapForActiveMove();
+            if (mapResult.IsFailure)
+            {
+                return TacticalResult.Failure(mapResult.ErrorMessage);
+            }
+
+            var commandResult = ActiveMoveCommand.TryCreate(
+                unit,
+                destination,
+                mapResult.Value,
+                unitRegistry,
+                currentState);
+            if (commandResult.IsFailure)
+            {
+                return TacticalResult.Failure(commandResult.ErrorMessage);
+            }
+
+            var command = commandResult.Value;
+            if (!unitRegistry.TryGetLivingUnit(command.Unit.UnitId, out var registeredUnit)
+                || !ReferenceEquals(registeredUnit, command.Unit))
+            {
+                return TacticalResult.Failure($"{DescribeUnit(command.Unit)} cannot active move because it is not the registered living unit for {command.Unit.UnitId}.");
+            }
+
+            var previousAP = command.Unit.CurrentAP;
+            var previousPosition = command.Unit.CurrentGridPosition;
+            var executeResult = command.Execute();
+            if (executeResult.IsFailure)
+            {
+                return executeResult;
+            }
+
+            if (command.Unit.CurrentAP != previousAP)
+            {
+                eventBus?.PublishActionPointsChanged(command.Unit, previousAP, command.Unit.CurrentAP);
+            }
+
+            currentState.SetState(currentState.CurrentRound, CombatPhase.ActiveTurn, command.Unit, null, null);
+            LogActiveMove(command, previousPosition, previousAP);
+            return TacticalResult.Success();
         }
 
         /// <summary>
@@ -837,6 +900,26 @@ namespace ReactionTactics.Turns
             return TacticalResult<IGridMap>.Success(gridManager.CurrentMap);
         }
 
+        private TacticalResult<IGridMap> ResolveCurrentMapForActiveMove()
+        {
+            if (gridManager == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot active move because {nameof(GridManager)} is missing.");
+            }
+
+            if (!gridManager.HasCurrentMap && !gridManager.RebuildMap())
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot active move because {nameof(GridManager)} could not build a current map.");
+            }
+
+            if (gridManager.CurrentMap == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot active move because {nameof(GridManager)} has no current map.");
+            }
+
+            return TacticalResult<IGridMap>.Success(gridManager.CurrentMap);
+        }
+
         private void PublishActionDeclarationEvents(ActionIntent intent, int previousAP)
         {
             if (intent.Actor.CurrentAP != previousAP)
@@ -918,6 +1001,18 @@ namespace ReactionTactics.Turns
 
             Debug.Log(
                 $"[Combat Log] {DescribeUnit(command.Reactor)} passed reaction to '{command.SourceIntent.Ability.DisplayName}' for {command.Cost} AP.",
+                this);
+        }
+
+        private void LogActiveMove(ActiveMoveCommand command, GridPosition previousPosition, int previousAP)
+        {
+            if (!logActionFlow)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"[Combat Log] {DescribeUnit(command.Unit)} active-moved from {previousPosition} to {command.Destination}; AP {previousAP}->{command.Unit.CurrentAP}.",
                 this);
         }
 
