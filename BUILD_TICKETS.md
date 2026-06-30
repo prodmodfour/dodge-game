@@ -1083,7 +1083,7 @@ unity-ctrl --project "$PWD" test --filter GridOccupancyTests
 
 ## 036 — Make pathfinding occupancy-aware
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: block movement through occupied cells`
 

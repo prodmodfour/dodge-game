@@ -52,14 +52,16 @@ namespace ReactionTactics.Pathfinding
 
         /// <summary>
         /// Finds every cell that can be reached from <paramref name="start"/> without exceeding
-        /// <paramref name="apBudget"/>, using <paramref name="occupancy"/> to reject occupied cells.
-        /// The returned dictionary always includes the start cell with total AP cost 0.
+        /// <paramref name="apBudget"/>, using <paramref name="occupancy"/> to reject occupied cells
+        /// unless <paramref name="ignoreUnits"/> is true. The returned dictionary always includes
+        /// the start cell with total AP cost 0.
         /// </summary>
         public IReadOnlyDictionary<GridPosition, ReachableCell> FindReachableCells(
             IGridMap map,
             GridPosition start,
             int apBudget,
-            IGridOccupancy occupancy)
+            IGridOccupancy occupancy,
+            bool ignoreUnits = false)
         {
             return FindReachableCells(
                 map,
@@ -67,7 +69,8 @@ namespace ReactionTactics.Pathfinding
                 apBudget,
                 defaultNeighborService,
                 defaultMovementCostService,
-                occupancy);
+                occupancy,
+                ignoreUnits);
         }
 
         /// <summary>
@@ -93,14 +96,15 @@ namespace ReactionTactics.Pathfinding
         /// <summary>
         /// Finds the cheapest ordered path from <paramref name="start"/> to
         /// <paramref name="destination"/> without exceeding <paramref name="apBudget"/>, using
-        /// <paramref name="occupancy"/> to reject occupied cells.
+        /// <paramref name="occupancy"/> to reject occupied cells unless <paramref name="ignoreUnits"/> is true.
         /// </summary>
         public GridPath TryFindPath(
             IGridMap map,
             GridPosition start,
             GridPosition destination,
             int apBudget,
-            IGridOccupancy occupancy)
+            IGridOccupancy occupancy,
+            bool ignoreUnits = false)
         {
             return TryFindPath(
                 map,
@@ -109,14 +113,16 @@ namespace ReactionTactics.Pathfinding
                 apBudget,
                 defaultNeighborService,
                 defaultMovementCostService,
-                occupancy);
+                occupancy,
+                ignoreUnits);
         }
 
         /// <summary>
         /// Finds every cell that can be reached from <paramref name="start"/> without exceeding
         /// <paramref name="apBudget"/>. <paramref name="occupancy"/> is optional; null is treated
-        /// as <see cref="NullGridOccupancy"/>. The start cell is always allowed so callers can
-        /// treat the moving unit as occupying it.
+        /// as <see cref="NullGridOccupancy"/>. Set <paramref name="ignoreUnits"/> to true for
+        /// future abilities that can move through occupied cells. The start cell is always
+        /// allowed so callers can treat the moving unit as occupying it.
         /// </summary>
         public IReadOnlyDictionary<GridPosition, ReachableCell> FindReachableCells(
             IGridMap map,
@@ -124,16 +130,16 @@ namespace ReactionTactics.Pathfinding
             int apBudget,
             GridNeighborService neighborService,
             MovementCostService movementCostService,
-            IGridOccupancy occupancy)
+            IGridOccupancy occupancy,
+            bool ignoreUnits = false)
         {
-            var resolvedOccupancy = occupancy ?? NullGridOccupancy.Instance;
             return FindReachableCells(
                 map,
                 start,
                 apBudget,
                 neighborService,
                 movementCostService,
-                position => resolvedOccupancy.CanEnter(position));
+                CreateOccupancyPredicate(occupancy, ignoreUnits));
         }
 
         /// <summary>
@@ -245,6 +251,7 @@ namespace ReactionTactics.Pathfinding
         /// Finds the cheapest ordered path from <paramref name="start"/> to
         /// <paramref name="destination"/> without exceeding <paramref name="apBudget"/>.
         /// <paramref name="occupancy"/> is optional; null is treated as <see cref="NullGridOccupancy"/>.
+        /// Set <paramref name="ignoreUnits"/> to true for future abilities that can move through occupied cells.
         /// </summary>
         public GridPath TryFindPath(
             IGridMap map,
@@ -253,9 +260,9 @@ namespace ReactionTactics.Pathfinding
             int apBudget,
             GridNeighborService neighborService,
             MovementCostService movementCostService,
-            IGridOccupancy occupancy)
+            IGridOccupancy occupancy,
+            bool ignoreUnits = false)
         {
-            var resolvedOccupancy = occupancy ?? NullGridOccupancy.Instance;
             return TryFindPath(
                 map,
                 start,
@@ -263,7 +270,7 @@ namespace ReactionTactics.Pathfinding
                 apBudget,
                 neighborService,
                 movementCostService,
-                position => resolvedOccupancy.CanEnter(position));
+                CreateOccupancyPredicate(occupancy, ignoreUnits));
         }
 
         /// <summary>
@@ -296,6 +303,17 @@ namespace ReactionTactics.Pathfinding
             }
 
             return ReconstructPath(start, destination, reachableCells);
+        }
+
+        private static Func<GridPosition, bool> CreateOccupancyPredicate(IGridOccupancy occupancy, bool ignoreUnits)
+        {
+            if (ignoreUnits)
+            {
+                return position => true;
+            }
+
+            var resolvedOccupancy = occupancy ?? NullGridOccupancy.Instance;
+            return position => resolvedOccupancy.CanEnter(position);
         }
 
         private static GridPath ReconstructPath(
