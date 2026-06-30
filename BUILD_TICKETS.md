@@ -2151,7 +2151,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 073 — Add action declaration service
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: declare actions as intents`
 
