@@ -2124,7 +2124,7 @@ unity-ctrl --project "$PWD" test --filter ActionIntentTests
 
 ## 072 — Add ability target validator interface
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add ability target validation interface`
 
