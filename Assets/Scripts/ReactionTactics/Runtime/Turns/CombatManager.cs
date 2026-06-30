@@ -855,7 +855,7 @@ namespace ReactionTactics.Turns
                 currentState.SetState(currentState.CurrentRound, CombatPhase.ReactionWindow, intent.Actor, reactor, intent);
                 eventBus?.PublishReactionTurnStarted(reactor, intent);
 
-                var eligibility = reactionEligibilityService.CanUnitReact(reactor, intent, currentState);
+                var eligibility = EvaluateCurrentReactionEligibility(reactor, intent);
                 if (!eligibility.IsEligible || eligibility.ShouldAutoPass)
                 {
                     LogReactionAutoPass(intent, reactor, eligibility);
@@ -872,6 +872,38 @@ namespace ReactionTactics.Turns
             currentReactionWindow.Close();
             LogReactionWindowClosed(intent, currentReactionWindow);
             return ResolveDeclaredAction(intent);
+        }
+
+        private ReactionEligibilityResult EvaluateCurrentReactionEligibility(TacticalUnit reactor, ActionIntent intent)
+        {
+            var mapResult = ResolveCurrentMapForReactionAvailability();
+            return reactionEligibilityService.CanUnitReact(
+                reactor,
+                intent,
+                currentState,
+                currentReactionWindow,
+                mapResult.IsSuccess ? mapResult.Value : null,
+                unitRegistry);
+        }
+
+        private TacticalResult<IGridMap> ResolveCurrentMapForReactionAvailability()
+        {
+            if (gridManager == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot inspect reaction movement because {nameof(GridManager)} is missing.");
+            }
+
+            if (!gridManager.HasCurrentMap && !gridManager.RebuildMap())
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot inspect reaction movement because {nameof(GridManager)} could not build a current map.");
+            }
+
+            if (gridManager.CurrentMap == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot inspect reaction movement because {nameof(GridManager)} has no current map.");
+            }
+
+            return TacticalResult<IGridMap>.Success(gridManager.CurrentMap);
         }
 
         private TacticalResult ResolveDeclaredAction(ActionIntent intent)

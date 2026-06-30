@@ -49,6 +49,7 @@ The prototype is about deterministic tactical timing. Attacks are avoided by spe
 
 - Every action that triggers reactions opens a reaction window before resolution.
 - Every other living unit receives one reaction turn unless eligibility rules auto-pass them.
+- Reactors auto-pass when they are defeated, disabled by a reaction rule, have no AP, or have no legal reaction command other than Pass; debug action-flow logs include the reason.
 - Reactor order is based on distance from the acting unit's grid position at action declaration time.
 - Implementations should use one canonical tactical distance helper for this ordering.
 - Ties must be deterministic, for example by stable unit ID or active-turn order.

@@ -3114,7 +3114,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 106 — Auto-pass reactors with no meaningful reaction
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: auto pass reactors without useful reactions`
 
