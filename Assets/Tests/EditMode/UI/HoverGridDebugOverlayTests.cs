@@ -1,5 +1,7 @@
 using NUnit.Framework;
 using ReactionTactics.Grid;
+using ReactionTactics.Pathfinding;
+using ReactionTactics.Reactions;
 using ReactionTactics.UI;
 using ReactionTactics.Units;
 using UnityEngine;
@@ -97,6 +99,23 @@ namespace ReactionTactics.Tests.EditMode.UI
             Assert.That(formatted, Does.Contain("Blocks LoS: True"));
             Assert.That(formatted, Does.Contain("Height: 2"));
             Assert.That(formatted, Does.Contain("Movement Cost: 4"));
+        }
+
+        [Test]
+        public void FormatInfoCanAppendReactionSafetyReason()
+        {
+            var position = new GridPosition(1, 0, 0);
+            var info = new HoverGridDebugInfo(new GridCell(position), null);
+            var safetyCell = new ReactionSafetyCell(
+                new ReachableCell(position, totalApCost: 1),
+                ReactionSafetyStatus.Threatened,
+                "Still inside the declared cone.");
+
+            var formatted = HoverGridDebugOverlay.FormatInfo(info, safetyCell);
+
+            Assert.That(formatted, Does.Contain("Cell: (1,0,0)"));
+            Assert.That(formatted, Does.Contain("Reaction Safety: Threatened"));
+            Assert.That(formatted, Does.Contain("Still inside the declared cone."));
         }
 
         private static void Destroy(Object value)

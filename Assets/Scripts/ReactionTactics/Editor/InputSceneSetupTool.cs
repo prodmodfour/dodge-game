@@ -57,6 +57,7 @@ namespace ReactionTactics.Editor
                 var gridHighlightManagerCreated = false;
                 var activeMovementPreviewCreated = false;
                 var actionDangerPreviewCreated = false;
+                var reactionMovementSafetyPreviewCreated = false;
 
                 var systemsRoot = EnsureRootObject(scene, SystemsRootName, ref systemsRootCreated);
                 var gridRoot = EnsureRootObject(scene, GridRootName, ref gridRootCreated);
@@ -77,17 +78,19 @@ namespace ReactionTactics.Editor
                 var gridHighlightManager = EnsureSceneComponent<GridHighlightManager>(scene, gridHighlightHost, ref gridHighlightManagerCreated);
                 var activeMovementPreview = EnsureSceneComponent<ActiveMovementPreviewController>(scene, uiRoot, ref activeMovementPreviewCreated);
                 var actionDangerPreview = EnsureSceneComponent<ActionDangerPreviewController>(scene, uiRoot, ref actionDangerPreviewCreated);
+                var reactionMovementSafetyPreview = EnsureSceneComponent<ReactionMovementSafetyPreviewController>(scene, uiRoot, ref reactionMovementSafetyPreviewCreated);
 
                 ConfigureCameraController(cameraController, gridManager);
                 ConfigureGridPicker(gridPicker, camera);
                 ConfigureSelectionController(selectionController, gridPicker);
                 ConfigureCommandRouter(commandRouter, selectionController, gridPicker, combatManager);
-                ConfigureHoverOverlay(hoverOverlay, gridPicker, gridManager, unitRegistry, camera);
+                ConfigureHoverOverlay(hoverOverlay, gridPicker, gridManager, unitRegistry, camera, reactionMovementSafetyPreview);
                 ConfigureActiveActionMenu(activeActionMenu, selectionController, commandRouter, combatManager);
                 ConfigureReactionMenu(reactionMenu, commandRouter, combatManager);
                 ConfigureGridHighlightManager(gridHighlightManager, terrainView);
                 ConfigureActiveMovementPreview(activeMovementPreview, selectionController, combatManager, gridManager, unitRegistry, gridHighlightManager);
                 ConfigureActionDangerPreview(actionDangerPreview, selectionController, gridPicker, combatManager, gridManager, unitRegistry, gridHighlightManager);
+                ConfigureReactionMovementSafetyPreview(reactionMovementSafetyPreview, selectionController, combatManager, gridManager, unitRegistry, gridHighlightManager);
 
                 if (gridManager != null && gridManager.RebuildMap())
                 {
@@ -142,6 +145,8 @@ namespace ReactionTactics.Editor
                     activeMovementPreviewCreated,
                     actionDangerPreview = GetScenePath(actionDangerPreview.gameObject),
                     actionDangerPreviewCreated,
+                    reactionMovementSafetyPreview = GetScenePath(reactionMovementSafetyPreview.gameObject),
+                    reactionMovementSafetyPreviewCreated,
                     references = new
                     {
                         gridManager = gridManager != null ? GetScenePath(gridManager.gameObject) : null,
@@ -337,7 +342,8 @@ namespace ReactionTactics.Editor
             GridPicker gridPicker,
             GridManager gridManager,
             UnitRegistry unitRegistry,
-            Camera camera)
+            Camera camera,
+            ReactionMovementSafetyPreviewController reactionMovementSafetyPreview)
         {
             var serializedObject = new SerializedObject(hoverOverlay);
             serializedObject.Update();
@@ -345,6 +351,7 @@ namespace ReactionTactics.Editor
             SetObjectReference(serializedObject, "gridManager", gridManager);
             SetObjectReference(serializedObject, "unitRegistry", unitRegistry);
             SetObjectReference(serializedObject, "sourceCamera", camera);
+            SetObjectReference(serializedObject, "reactionSafetyPreview", reactionMovementSafetyPreview);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(hoverOverlay);
         }
@@ -432,6 +439,26 @@ namespace ReactionTactics.Editor
             SetBool(serializedObject, "visible", true);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(actionDangerPreview);
+        }
+
+        private static void ConfigureReactionMovementSafetyPreview(
+            ReactionMovementSafetyPreviewController reactionMovementSafetyPreview,
+            SelectionController selectionController,
+            CombatManager combatManager,
+            GridManager gridManager,
+            UnitRegistry unitRegistry,
+            GridHighlightManager gridHighlightManager)
+        {
+            var serializedObject = new SerializedObject(reactionMovementSafetyPreview);
+            serializedObject.Update();
+            SetObjectReference(serializedObject, "selectionController", selectionController);
+            SetObjectReference(serializedObject, "combatManager", combatManager);
+            SetObjectReference(serializedObject, "gridManager", gridManager);
+            SetObjectReference(serializedObject, "unitRegistry", unitRegistry);
+            SetObjectReference(serializedObject, "highlightManager", gridHighlightManager);
+            SetBool(serializedObject, "visible", true);
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(reactionMovementSafetyPreview);
         }
 
         private static void SetObjectReference(SerializedObject serializedObject, string propertyName, UnityEngine.Object value)

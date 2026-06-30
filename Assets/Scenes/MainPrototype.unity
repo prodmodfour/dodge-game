@@ -1112,6 +1112,7 @@ GameObject:
   - component: {fileID: 1047836515}
   - component: {fileID: 1047836516}
   - component: {fileID: 1047836517}
+  - component: {fileID: 1047836518}
   m_Layer: 0
   m_Name: UI
   m_TagString: Untagged
@@ -1150,6 +1151,7 @@ MonoBehaviour:
   gridManager: {fileID: 1092979091}
   unitRegistry: {fileID: 1494555728}
   sourceCamera: {fileID: 737579229}
+  reactionSafetyPreview: {fileID: 1047836518}
   fallbackRaycastLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -1285,6 +1287,32 @@ MonoBehaviour:
     width: 380
     height: 96
   panelTitle: Danger Preview
+--- !u!114 &1047836518
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047836510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ca8279c9009ad49981ba0d22e5451ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.ReactionMovementSafetyPreviewController
+  selectionController: {fileID: 1092979094}
+  combatManager: {fileID: 1092979095}
+  gridManager: {fileID: 1092979091}
+  unitRegistry: {fileID: 1494555728}
+  highlightManager: {fileID: 914327700}
+  visible: 1
+  includeStartCellInHighlights: 1
+  panelRect:
+    serializedVersion: 2
+    x: 744
+    y: 330
+    width: 390
+    height: 132
+  panelTitle: Reaction Move Safety
 --- !u!1 &1092979089
 GameObject:
   m_ObjectHideFlags: 0

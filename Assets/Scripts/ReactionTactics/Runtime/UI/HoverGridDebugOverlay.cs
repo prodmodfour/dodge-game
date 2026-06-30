@@ -1,5 +1,6 @@
 using ReactionTactics.Grid;
 using ReactionTactics.Input;
+using ReactionTactics.Reactions;
 using ReactionTactics.Units;
 using UnityEngine;
 
@@ -35,6 +36,10 @@ namespace ReactionTactics.UI
         [SerializeField]
         [Tooltip("Camera used by fallback debug raycasts when no GridPicker is present.")]
         private Camera sourceCamera;
+
+        [SerializeField]
+        [Tooltip("Optional reaction movement safety preview whose hover reasons are appended to this debug panel.")]
+        private ReactionMovementSafetyPreviewController reactionSafetyPreview;
 
         [SerializeField]
         [Tooltip("Physics layers included by fallback debug raycasts when no GridPicker is present.")]
@@ -85,6 +90,12 @@ namespace ReactionTactics.UI
             get { return unitRegistry; }
         }
 
+        public ReactionMovementSafetyPreviewController ReactionSafetyPreview
+        {
+            get { return reactionSafetyPreview; }
+            set { reactionSafetyPreview = value; }
+        }
+
         public bool HasHoveredPosition
         {
             get { return hasHoveredPosition; }
@@ -117,12 +128,18 @@ namespace ReactionTactics.UI
             set { panelRect = ClampPanelRect(value); }
         }
 
-        public void Configure(GridPicker picker, GridManager manager, UnitRegistry registry, Camera camera)
+        public void Configure(
+            GridPicker picker,
+            GridManager manager,
+            UnitRegistry registry,
+            Camera camera,
+            ReactionMovementSafetyPreviewController safetyPreview = null)
         {
             gridPicker = picker;
             gridManager = manager;
             unitRegistry = registry;
             sourceCamera = camera;
+            reactionSafetyPreview = safetyPreview;
         }
 
         public bool TryGetDebugInfo(GridPosition position, out HoverGridDebugInfo info)
@@ -162,6 +179,11 @@ namespace ReactionTactics.UI
                 + $"Blocks LoS: {info.BlocksLineOfSight}\n"
                 + $"Height: {info.HeightY}  Display: {info.DisplayHeight:0.##}\n"
                 + $"Movement Cost: {info.MovementCost}";
+        }
+
+        public static string FormatInfo(HoverGridDebugInfo info, ReactionSafetyCell safetyCell)
+        {
+            return FormatInfo(info) + "\n" + ReactionMovementSafetyPreviewController.FormatSafetyTooltip(safetyCell);
         }
 
         private void Awake()
@@ -341,6 +363,11 @@ namespace ReactionTactics.UI
             {
                 sourceCamera = Camera.main ?? FindAnyObjectByType<Camera>();
             }
+
+            if (reactionSafetyPreview == null)
+            {
+                reactionSafetyPreview = FindAnyObjectByType<ReactionMovementSafetyPreviewController>();
+            }
         }
 
         private void DrawCompactNoHoverPanel()
@@ -356,15 +383,17 @@ namespace ReactionTactics.UI
         {
             EnsureStyles();
             GUILayout.BeginArea(panelRect, panelTitle, GUI.skin.window);
-            if (hasCurrentInfo)
+            var panelText = hasCurrentInfo
+                ? FormatInfo(currentInfo)
+                : $"Cell: {hoveredPosition}\n{currentFailureReason}";
+
+            if (reactionSafetyPreview != null
+                && reactionSafetyPreview.TryGetSafetyCell(hoveredPosition, out var safetyCell))
             {
-                GUILayout.Label(FormatInfo(currentInfo), labelStyle);
-            }
-            else
-            {
-                GUILayout.Label($"Cell: {hoveredPosition}\n{currentFailureReason}", labelStyle);
+                panelText += "\n" + ReactionMovementSafetyPreviewController.FormatSafetyTooltip(safetyCell);
             }
 
+            GUILayout.Label(panelText, labelStyle);
             GUILayout.EndArea();
         }
 

@@ -3381,7 +3381,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 115 — Show reaction movement safety
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: show safe and threatened reaction destinations`
 
