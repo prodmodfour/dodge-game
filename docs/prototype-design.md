@@ -22,6 +22,12 @@ The prototype is about deterministic tactical timing. Attacks are avoided by spe
 
 ## Actions vs. reactions
 
+### Targeting confirmation
+
+- Mouse targeting uses a two-step confirmation flow for movement and targeted abilities: the first click marks the unit or cell as the selected target, and the command is declared only after the player clicks the same target again or presses the on-screen Confirm button.
+- `Escape` cancels the selected action or reaction mode, clears the pending target, and removes transient targeting highlights so the player can recover from a wrong click.
+- Programmatic command tests and UI buttons may call the router's explicit confirm method directly when they already own a deliberate target selection.
+
 ### Actions
 
 - Actions are commands a unit can use only on its own active turn.

@@ -90,6 +90,50 @@ namespace ReactionTactics.Tests.EditMode.Input
         }
 
         [Test]
+        public void SelectTargetForConfirmationStoresTargetWithoutRoutingDeclaration()
+        {
+            var selectionObject = new GameObject("Selection Controller Confirmation Test");
+            var routerObject = new GameObject("Player Command Router Confirmation Test");
+            var actorObject = new GameObject("Confirmation Actor");
+            var stats = CreateStats("Archer");
+            var requests = new List<PlayerCommandRequest>();
+
+            try
+            {
+                var selection = selectionObject.AddComponent<SelectionController>();
+                var router = routerObject.AddComponent<PlayerCommandRouter>();
+                var actor = CreateUnit(actorObject, new UnitId(22), TeamId.Player, stats, new GridPosition(1, 0, 1));
+                var targetCell = new GridPosition(3, 0, 1);
+                router.SelectionController = selection;
+                router.CommandRequested += requests.Add;
+
+                Assert.That(router.SelectUnit(actor).IsSuccess, Is.True);
+                Assert.That(router.SelectConeAttack().IsSuccess, Is.True);
+                var targetResult = router.SelectTargetCellForConfirmation(targetCell);
+
+                Assert.That(targetResult.IsSuccess, Is.True, targetResult.ErrorMessage);
+                Assert.That(requests.Count, Is.EqualTo(2));
+                Assert.That(requests[1].CommandType, Is.EqualTo(PlayerCommandType.SelectAttack));
+                Assert.That(selection.SelectedTarget.Kind, Is.EqualTo(SelectionTargetKind.Cell));
+                Assert.That(selection.SelectedTarget.Cell, Is.EqualTo(targetCell));
+
+                var confirmResult = router.ConfirmCurrentTarget();
+
+                Assert.That(confirmResult.IsSuccess, Is.True, confirmResult.ErrorMessage);
+                Assert.That(requests.Count, Is.EqualTo(3));
+                Assert.That(requests[2].CommandType, Is.EqualTo(PlayerCommandType.ConfirmTarget));
+                Assert.That(requests[2].Target.Cell, Is.EqualTo(targetCell));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(actorObject);
+                UnityEngine.Object.DestroyImmediate(routerObject);
+                UnityEngine.Object.DestroyImmediate(selectionObject);
+                UnityEngine.Object.DestroyImmediate(stats);
+            }
+        }
+
+        [Test]
         public void InvalidAttackModeIsRejectedWithoutChangingSelection()
         {
             var selectionObject = new GameObject("Selection Controller");
@@ -258,6 +302,12 @@ namespace ReactionTactics.Tests.EditMode.Input
                 unitObject.transform.position = new Vector3(3f, 0f, -1.5f);
                 Physics.SyncTransforms();
                 Assert.That(router.SelectMove().IsSuccess, Is.True);
+                Assert.That(fixture.Picker.TryClickScreenPosition(screenPosition, out _, out _), Is.True);
+
+                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.SelectMove));
+                Assert.That(selection.SelectedTarget.Kind, Is.EqualTo(SelectionTargetKind.Cell));
+                Assert.That(selection.SelectedTarget.Cell, Is.EqualTo(new GridPosition(4, 0, 5)));
+
                 Assert.That(fixture.Picker.TryClickScreenPosition(screenPosition, out _, out _), Is.True);
 
                 var lastRequest = requests[requests.Count - 1];

@@ -3411,7 +3411,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 116 — Add target confirmation and cancel flow
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add targeting confirm and cancel flow`
 

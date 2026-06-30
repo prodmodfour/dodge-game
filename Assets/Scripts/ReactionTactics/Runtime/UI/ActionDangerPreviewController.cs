@@ -60,6 +60,7 @@ namespace ReactionTactics.UI
         private readonly IntentPreviewService previewService = new IntentPreviewService();
         private readonly List<GridPosition> dangerCellsBuffer = new List<GridPosition>();
         private ActionIntentPreview currentPreview;
+        private bool appliedTargetCellHighlight;
         private string lastFeedback = string.Empty;
         private GUIStyle feedbackStyle;
 
@@ -371,18 +372,18 @@ namespace ReactionTactics.UI
             switch (ability.Shape)
             {
                 case AbilityShape.Melee:
-                    if (!TryGetHoveredUnit(selectionState, out var hoveredUnit))
+                    if (!TryGetSelectedOrHoveredUnit(selectionState, out var hoveredUnit))
                     {
-                        failureReason = $"Hover a hostile unit in melee range to preview {ability.DisplayName}.";
+                        failureReason = $"Hover or select a hostile unit in melee range to preview {ability.DisplayName}.";
                         return false;
                     }
 
                     target = ActionTarget.ForUnit(hoveredUnit);
                     return true;
                 case AbilityShape.Cone:
-                    if (!TryGetHoveredCell(selectionState, out var coneCell))
+                    if (!TryGetSelectedOrHoveredCell(selectionState, out var coneCell))
                     {
-                        failureReason = $"Hover a grid cell to aim {ability.DisplayName}.";
+                        failureReason = $"Hover or select a grid cell to aim {ability.DisplayName}.";
                         return false;
                     }
 
@@ -394,9 +395,9 @@ namespace ReactionTactics.UI
 
                     return true;
                 case AbilityShape.Radius:
-                    if (!TryGetHoveredCell(selectionState, out var radiusCell))
+                    if (!TryGetSelectedOrHoveredCell(selectionState, out var radiusCell))
                     {
-                        failureReason = $"Hover a grid cell to preview {ability.DisplayName}.";
+                        failureReason = $"Hover or select a grid cell to preview {ability.DisplayName}.";
                         return false;
                     }
 
@@ -408,16 +409,22 @@ namespace ReactionTactics.UI
             }
         }
 
-        private bool TryGetHoveredUnit(SelectionState selectionState, out TacticalUnit unit)
+        private bool TryGetSelectedOrHoveredUnit(SelectionState selectionState, out TacticalUnit unit)
         {
             unit = null;
+            if (selectionState.SelectedTarget.HasUnit)
+            {
+                unit = selectionState.SelectedTarget.Unit;
+                return unit != null;
+            }
+
             if (gridPicker != null && gridPicker.HasCurrentHoverUnit && gridPicker.CurrentHoverUnit != null)
             {
                 unit = gridPicker.CurrentHoverUnit;
                 return true;
             }
 
-            if (TryGetHoveredCell(selectionState, out var cell)
+            if (TryGetSelectedOrHoveredCell(selectionState, out var cell)
                 && unitRegistry != null
                 && unitRegistry.TryGetUnitAt(cell, out var occupant))
             {
@@ -426,6 +433,17 @@ namespace ReactionTactics.UI
             }
 
             return false;
+        }
+
+        private bool TryGetSelectedOrHoveredCell(SelectionState selectionState, out GridPosition cell)
+        {
+            if (selectionState.SelectedTarget.HasCell)
+            {
+                cell = selectionState.SelectedTarget.CurrentCell;
+                return true;
+            }
+
+            return TryGetHoveredCell(selectionState, out cell);
         }
 
         private bool TryGetHoveredCell(SelectionState selectionState, out GridPosition cell)
@@ -488,6 +506,15 @@ namespace ReactionTactics.UI
             }
 
             highlightManager.SetHighlightedCells(GridHighlightCategory.ActionDanger, dangerCellsBuffer);
+            if (preview.Target.HasTargetCell)
+            {
+                highlightManager.HighlightCell(GridHighlightCategory.TargetCell, preview.Target.TargetCell);
+                appliedTargetCellHighlight = true;
+            }
+            else
+            {
+                ClearOwnedTargetCellHighlight();
+            }
         }
 
         private void ClearActionHighlights()
@@ -498,6 +525,18 @@ namespace ReactionTactics.UI
             }
 
             highlightManager.ClearCategory(GridHighlightCategory.ActionDanger);
+            ClearOwnedTargetCellHighlight();
+        }
+
+        private void ClearOwnedTargetCellHighlight()
+        {
+            if (!appliedTargetCellHighlight || highlightManager == null)
+            {
+                return;
+            }
+
+            highlightManager.ClearCategory(GridHighlightCategory.TargetCell);
+            appliedTargetCellHighlight = false;
         }
 
         private bool IsAttackModeSelected()

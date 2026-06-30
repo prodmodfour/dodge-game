@@ -101,6 +101,28 @@ namespace ReactionTactics.Tests.EditMode.UI
         }
 
         [Test]
+        public void RefreshPreviewUsesSelectedTargetForConfirmationWhenNoCellIsHovered()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.CreateStandardUnits();
+                Assert.That(fixture.Manager.StartCombat().IsSuccess, Is.True);
+                Assert.That(fixture.Selection.SelectUnit(fixture.Actor).IsSuccess, Is.True);
+                Assert.That(fixture.Selection.SetActionMode(SelectionActionMode.AreaOfEffect).IsSuccess, Is.True);
+                fixture.Selection.SetTargetCell(fixture.Enemy.CurrentGridPosition);
+
+                var refreshed = fixture.PreviewController.RefreshPreview();
+
+                Assert.That(refreshed, Is.True, fixture.PreviewController.LastFeedback);
+                Assert.That(fixture.PreviewController.CurrentPreview.IsValid, Is.True, fixture.PreviewController.CurrentPreview.InvalidReason);
+                Assert.That(fixture.PreviewController.CurrentPreview.Target.TargetCell, Is.EqualTo(fixture.Enemy.CurrentGridPosition));
+                Assert.That(
+                    fixture.HighlightManager.IsHighlighted(fixture.Enemy.CurrentGridPosition, GridHighlightCategory.TargetCell),
+                    Is.True);
+            }
+        }
+
+        [Test]
         public void RefreshPreviewClearsDangerHighlightsWhenAttackModeIsCancelled()
         {
             using (var fixture = new Fixture())
@@ -120,6 +142,7 @@ namespace ReactionTactics.Tests.EditMode.UI
                 Assert.That(fixture.PreviewController.HasActivePreview, Is.False);
                 Assert.That(fixture.PreviewController.LastFeedback, Is.Empty);
                 Assert.That(fixture.HighlightManager.GetHighlightedCells(GridHighlightCategory.ActionDanger), Is.Empty);
+                Assert.That(fixture.HighlightManager.GetHighlightedCells(GridHighlightCategory.TargetCell), Is.Empty);
             }
         }
 

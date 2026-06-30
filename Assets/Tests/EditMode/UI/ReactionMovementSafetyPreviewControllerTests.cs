@@ -67,6 +67,29 @@ namespace ReactionTactics.Tests.EditMode.UI
         }
 
         [Test]
+        public void RefreshPreviewUsesSelectedTargetForConfirmationWhenNoCellIsHovered()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.EnterMeleeReactionMove();
+                var safeDestination = new GridPosition(2, 0, 0);
+                fixture.Selection.SetTargetCell(safeDestination);
+
+                var refreshed = fixture.PreviewController.RefreshPreview();
+
+                Assert.That(refreshed, Is.True, fixture.PreviewController.LastFeedback);
+                Assert.That(fixture.PreviewController.CurrentPreview.HasSelectedPath, Is.True);
+                Assert.That(fixture.PreviewController.CurrentPreview.SelectedPath.Destination, Is.EqualTo(safeDestination));
+                Assert.That(fixture.HighlightManager.IsHighlighted(safeDestination, GridHighlightCategory.TargetCell), Is.True);
+                Assert.That(fixture.HighlightManager.HoverPath.ToArray(), Is.EqualTo(new[]
+                {
+                    fixture.Reactor.CurrentGridPosition,
+                    safeDestination,
+                }));
+            }
+        }
+
+        [Test]
         public void RefreshPreviewClearsSafetyHighlightsWhenReactionMoveIsCancelled()
         {
             using (var fixture = new Fixture())
@@ -85,6 +108,8 @@ namespace ReactionTactics.Tests.EditMode.UI
                 Assert.That(fixture.PreviewController.LastFeedback, Is.Empty);
                 Assert.That(fixture.HighlightManager.GetHighlightedCells(GridHighlightCategory.ReactionSafe), Is.Empty);
                 Assert.That(fixture.HighlightManager.GetHighlightedCells(GridHighlightCategory.ReactionThreatened), Is.Empty);
+                Assert.That(fixture.HighlightManager.GetHighlightedCells(GridHighlightCategory.SelectedPath), Is.Empty);
+                Assert.That(fixture.HighlightManager.GetHighlightedCells(GridHighlightCategory.TargetCell), Is.Empty);
             }
         }
 

@@ -66,6 +66,28 @@ namespace ReactionTactics.Tests.EditMode.UI
         }
 
         [Test]
+        public void RefreshPreviewUsesSelectedTargetForConfirmationWhenNoCellIsHovered()
+        {
+            using (var fixture = new Fixture())
+            {
+                var activeUnit = fixture.CreateUnit("Preview Selected Target Unit", new UnitId(12), TeamId.Player, new GridPosition(0, 0, 0));
+                Assert.That(fixture.Manager.StartCombat().IsSuccess, Is.True);
+                activeUnit.SetAPForTest(2);
+
+                Assert.That(fixture.Selection.SelectUnit(activeUnit).IsSuccess, Is.True);
+                Assert.That(fixture.Selection.SetActionMode(SelectionActionMode.Move).IsSuccess, Is.True);
+                fixture.Selection.SetTargetCell(new GridPosition(2, 0, 0));
+
+                var refreshed = fixture.PreviewController.RefreshPreview();
+
+                Assert.That(refreshed, Is.True, fixture.PreviewController.LastFeedback);
+                Assert.That(fixture.PreviewController.CurrentPreview.HasSelectedPath, Is.True);
+                Assert.That(fixture.PreviewController.CurrentPreview.SelectedPath.Destination, Is.EqualTo(new GridPosition(2, 0, 0)));
+                Assert.That(fixture.HighlightManager.IsHighlighted(new GridPosition(2, 0, 0), GridHighlightCategory.TargetCell), Is.True);
+            }
+        }
+
+        [Test]
         public void RefreshPreviewReportsUnreachableHoverAndKeepsOnlyReachableRangeHighlighted()
         {
             using (var fixture = new Fixture())

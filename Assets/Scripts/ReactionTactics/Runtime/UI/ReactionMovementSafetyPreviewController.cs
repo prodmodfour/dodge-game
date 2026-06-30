@@ -65,6 +65,8 @@ namespace ReactionTactics.UI
         private readonly List<GridPosition> threatenedCellsBuffer = new List<GridPosition>();
 
         private MovementPreview currentPreview;
+        private bool appliedHoverPathHighlight;
+        private bool appliedTargetCellHighlight;
         private string lastFeedback = string.Empty;
         private GUIStyle feedbackStyle;
 
@@ -367,10 +369,10 @@ namespace ReactionTactics.UI
                 pendingIntent,
                 preview.ReachableCells.Values));
 
-            if (selectionState.HasHoveredCell)
+            if (TryGetPreviewDestination(selectionState, out var previewDestination))
             {
-                preview = preview.RecomputeSelectedPath(selectionState.HoveredCell);
-                if (TryFindSafetyCell(safetyCells, selectionState.HoveredCell, out var safetyCell))
+                preview = preview.RecomputeSelectedPath(previewDestination);
+                if (TryFindSafetyCell(safetyCells, previewDestination, out var safetyCell))
                 {
                     feedback = FormatHoverFeedback(reactor, pendingIntent, preview, safetyCell);
                     return true;
@@ -441,6 +443,19 @@ namespace ReactionTactics.UI
 
             highlightManager.SetHighlightedCells(GridHighlightCategory.ReactionSafe, safeCellsBuffer);
             highlightManager.SetHighlightedCells(GridHighlightCategory.ReactionThreatened, threatenedCellsBuffer);
+
+            if (preview != null && preview.HasSelectedPath)
+            {
+                highlightManager.SetHoverPath(preview.SelectedPath.Positions);
+                appliedHoverPathHighlight = true;
+                highlightManager.HighlightCell(GridHighlightCategory.TargetCell, preview.SelectedPath.Destination);
+                appliedTargetCellHighlight = true;
+            }
+            else
+            {
+                ClearOwnedHoverPathHighlight();
+                ClearOwnedTargetCellHighlight();
+            }
         }
 
         private void ClearSafetyHighlights()
@@ -452,6 +467,30 @@ namespace ReactionTactics.UI
 
             highlightManager.ClearCategory(GridHighlightCategory.ReactionSafe);
             highlightManager.ClearCategory(GridHighlightCategory.ReactionThreatened);
+            ClearOwnedHoverPathHighlight();
+            ClearOwnedTargetCellHighlight();
+        }
+
+        private void ClearOwnedHoverPathHighlight()
+        {
+            if (!appliedHoverPathHighlight || highlightManager == null)
+            {
+                return;
+            }
+
+            highlightManager.ClearHoverPath();
+            appliedHoverPathHighlight = false;
+        }
+
+        private void ClearOwnedTargetCellHighlight()
+        {
+            if (!appliedTargetCellHighlight || highlightManager == null)
+            {
+                return;
+            }
+
+            highlightManager.ClearCategory(GridHighlightCategory.TargetCell);
+            appliedTargetCellHighlight = false;
         }
 
         private void ReplaceSafetyCells(IEnumerable<ReactionSafetyCell> safetyCells)
@@ -520,6 +559,24 @@ namespace ReactionTactics.UI
                     normal = { textColor = Color.white }
                 };
             }
+        }
+
+        private static bool TryGetPreviewDestination(SelectionState selectionState, out GridPosition destination)
+        {
+            if (selectionState.SelectedTarget.HasCell)
+            {
+                destination = selectionState.SelectedTarget.CurrentCell;
+                return true;
+            }
+
+            if (selectionState.HasHoveredCell)
+            {
+                destination = selectionState.HoveredCell;
+                return true;
+            }
+
+            destination = GridPosition.Zero;
+            return false;
         }
 
         private static bool TryFindSafetyCell(

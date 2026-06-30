@@ -29,6 +29,10 @@ namespace ReactionTactics.UI
         private PlayerCommandRouter commandRouter;
 
         [SerializeField]
+        [Tooltip("Selection state used to show the currently selected reaction mode and pending target confirmation.")]
+        private SelectionController selectionController;
+
+        [SerializeField]
         [Tooltip("Combat manager whose reaction phase, current reactor, and pending action decide menu state.")]
         private CombatManager combatManager;
 
@@ -61,6 +65,12 @@ namespace ReactionTactics.UI
         {
             get { return commandRouter; }
             set { commandRouter = value; }
+        }
+
+        public SelectionController SelectionController
+        {
+            get { return selectionController; }
+            set { selectionController = value; }
         }
 
         public CombatManager CombatManager
@@ -116,9 +126,14 @@ namespace ReactionTactics.UI
 
         public static string FormatReactionSummary(CombatState combatState)
         {
+            return FormatReactionSummary(combatState, SelectionState.Empty);
+        }
+
+        public static string FormatReactionSummary(CombatState combatState, SelectionState selectionState)
+        {
             if (combatState == null)
             {
-                return "Phase: No Combat\nPending: None\nActor: None\nReactor: None";
+                return "Phase: No Combat\nPending: None\nActor: None\nReactor: None\nSelected Reaction: None";
             }
 
             var intent = combatState.PendingActionIntent as ActionIntent;
@@ -132,7 +147,8 @@ namespace ReactionTactics.UI
                 + $"Pending: {pendingLabel}\n"
                 + $"Actor: {FormatUnit(actor)}\n"
                 + $"Reactor: {FormatUnit(reactor)}\n"
-                + $"AP: {FormatAp(reactor)}";
+                + $"AP: {FormatAp(reactor)}\n"
+                + FormatSelectedReactionSummary(selectionState, reactor);
         }
 
         private void Awake()
@@ -162,15 +178,18 @@ namespace ReactionTactics.UI
 
             EnsureStyles();
             var entries = BuildMenuEntries(combatState);
+            var selectionState = selectionController != null ? selectionController.CurrentState : SelectionState.Empty;
 
             GUILayout.BeginArea(panelRect, panelTitle, GUI.skin.window);
-            GUILayout.Label(FormatReactionSummary(combatState), headerStyle);
+            GUILayout.Label(FormatReactionSummary(combatState, selectionState), headerStyle);
             GUILayout.Space(4f);
 
             for (var i = 0; i < entries.Count; i += 1)
             {
                 DrawEntry(entries[i]);
             }
+
+            DrawSelectedReactionControls(selectionState, combatState);
 
             if (!string.IsNullOrEmpty(lastFeedback))
             {
@@ -225,6 +244,38 @@ namespace ReactionTactics.UI
 
                 GUILayout.Label($"{entry.ShortName}: {entry.DisabledReason}", disabledReasonStyle);
             }
+        }
+
+        private void DrawSelectedReactionControls(SelectionState selectionState, CombatState combatState)
+        {
+            if (combatState == null || !combatState.IsReactionPhase || !selectionState.HasSelectedActionMode)
+            {
+                return;
+            }
+
+            GUILayout.Space(4f);
+            GUILayout.Label(FormatReactionTargetingInstructions(selectionState, combatState.CurrentReactor), detailStyle);
+
+            var router = ResolveCommandRouter();
+            var previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled
+                && router != null
+                && selectionState.SelectedActionMode == SelectionActionMode.Move
+                && selectionState.HasSelectedTarget;
+            if (GUILayout.Button("Confirm Reaction Move", GUILayout.Height(26f)))
+            {
+                var result = router.ConfirmCurrentTarget();
+                lastFeedback = result.IsSuccess ? "Confirmed reaction move." : result.ErrorMessage;
+            }
+
+            GUI.enabled = previousEnabled && router != null;
+            if (GUILayout.Button("Cancel Reaction Selection (Esc)", GUILayout.Height(24f)))
+            {
+                var result = router.Cancel();
+                lastFeedback = result.IsSuccess ? "Canceled reaction selection." : result.ErrorMessage;
+            }
+
+            GUI.enabled = previousEnabled;
         }
 
         private TacticalResult ExecuteEntry(ReactionMenuEntry entry)
@@ -283,6 +334,13 @@ namespace ReactionTactics.UI
         private void ResolveMissingReferences()
         {
             ResolveCommandRouter();
+
+            if (selectionController == null)
+            {
+                selectionController = commandRouter != null && commandRouter.SelectionController != null
+                    ? commandRouter.SelectionController
+                    : FindAnyObjectByType<SelectionController>();
+            }
 
             if (combatManager == null)
             {
@@ -496,6 +554,43 @@ namespace ReactionTactics.UI
         {
             var name = passAbility != null ? passAbility.DisplayName : "Pass Reaction";
             return $"{name} (0 AP)";
+        }
+
+        private static string FormatSelectedReactionSummary(SelectionState selectionState, TacticalUnit reactor)
+        {
+            if (!selectionState.HasSelectedActionMode)
+            {
+                return "Selected Reaction: None";
+            }
+
+            var reactionLabel = FormatSelectedReactionLabel(selectionState.SelectedActionMode, reactor);
+            var targetLabel = selectionState.HasSelectedTarget ? selectionState.SelectedTarget.ToString() : "No target selected";
+            return $"Selected Reaction: {reactionLabel}\nTarget: {targetLabel}";
+        }
+
+        private static string FormatReactionTargetingInstructions(SelectionState selectionState, TacticalUnit reactor)
+        {
+            var targetPrompt = selectionState.SelectedActionMode == SelectionActionMode.Move
+                ? selectionState.HasSelectedTarget
+                    ? "Confirm Reaction Move or click the same destination again to move."
+                    : "Click a reachable destination to mark it for confirmation."
+                : "This reaction resolves immediately or through its menu button.";
+            return $"{FormatSelectedReactionSummary(selectionState, reactor)}\n{targetPrompt} Escape cancels targeting.";
+        }
+
+        private static string FormatSelectedReactionLabel(SelectionActionMode actionMode, TacticalUnit reactor)
+        {
+            switch (actionMode)
+            {
+                case SelectionActionMode.Move:
+                    return FormatReactionMoveLabel(FindMoveAbility(reactor));
+                case SelectionActionMode.Brace:
+                    var braceAbility = FindBraceAbility(reactor);
+                    var braceCost = braceAbility != null ? braceAbility.APCost : BraceReactionCommand.DefaultApCost;
+                    return FormatBraceLabel(braceAbility, braceCost);
+                default:
+                    return actionMode.ToString();
+            }
         }
 
         private static string FormatAp(TacticalUnit unit)

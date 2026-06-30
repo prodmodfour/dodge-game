@@ -136,10 +136,10 @@ namespace ReactionTactics.UI
 
             if (selectedUnit == null)
             {
-                return $"Phase: {phaseLabel}\nActive: {activeLabel}\nSelected: None";
+                return $"Phase: {phaseLabel}\nActive: {activeLabel}\nSelected: None\nSelected Action: None";
             }
 
-            return $"Phase: {phaseLabel}\nActive: {activeLabel}\nSelected: {FormatUnit(selectedUnit)}\nAP: {selectedUnit.CurrentAP}/{selectedUnit.MaxAP}";
+            return $"Phase: {phaseLabel}\nActive: {activeLabel}\nSelected: {FormatUnit(selectedUnit)}\nAP: {selectedUnit.CurrentAP}/{selectedUnit.MaxAP}\n{FormatSelectedActionSummary(selectionState)}";
         }
 
         private void Awake()
@@ -175,6 +175,8 @@ namespace ReactionTactics.UI
             {
                 DrawEntry(entries[i]);
             }
+
+            DrawSelectedActionControls(selectionState);
 
             if (!string.IsNullOrEmpty(lastFeedback))
             {
@@ -221,6 +223,35 @@ namespace ReactionTactics.UI
             }
         }
 
+        private void DrawSelectedActionControls(SelectionState selectionState)
+        {
+            if (!selectionState.HasSelectedActionMode || !IsConfirmableActionMode(selectionState.SelectedActionMode))
+            {
+                return;
+            }
+
+            GUILayout.Space(4f);
+            GUILayout.Label(FormatTargetingInstructions(selectionState), detailStyle);
+
+            var router = ResolveCommandRouter();
+            var previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled && router != null && selectionState.HasSelectedTarget;
+            if (GUILayout.Button("Confirm Target", GUILayout.Height(26f)))
+            {
+                var result = router.ConfirmCurrentTarget();
+                lastFeedback = result.IsSuccess ? "Confirmed target." : result.ErrorMessage;
+            }
+
+            GUI.enabled = previousEnabled && router != null;
+            if (GUILayout.Button("Cancel Selection (Esc)", GUILayout.Height(24f)))
+            {
+                var result = router.Cancel();
+                lastFeedback = result.IsSuccess ? "Canceled selected action." : result.ErrorMessage;
+            }
+
+            GUI.enabled = previousEnabled;
+        }
+
         private TacticalResult ExecuteEntry(ActiveActionMenuEntry entry)
         {
             if (!entry.IsEnabled)
@@ -254,9 +285,19 @@ namespace ReactionTactics.UI
             }
 
             lastFeedback = result.IsSuccess
-                ? $"Selected {entry.ShortName}."
+                ? FormatSelectionFeedback(entry)
                 : result.ErrorMessage;
             return result;
+        }
+
+        private static string FormatSelectionFeedback(ActiveActionMenuEntry entry)
+        {
+            if (entry.Kind == ActiveActionMenuEntryKind.EndTurn)
+            {
+                return "Requested End Turn.";
+            }
+
+            return $"Selected {entry.ShortName}. Click a target to mark it, then Confirm Target or click the same target again. Esc cancels.";
         }
 
         private TacticalResult SelectAbility(PlayerCommandRouter router, SelectionActionMode actionMode)
@@ -482,6 +523,95 @@ namespace ReactionTactics.UI
         {
             var name = moveAbility != null ? moveAbility.DisplayName : "Move";
             return $"{name} (path AP)";
+        }
+
+        private static string FormatSelectedActionSummary(SelectionState selectionState)
+        {
+            if (!selectionState.HasSelectedActionMode)
+            {
+                return "Selected Action: None";
+            }
+
+            var actionLabel = FormatSelectedActionLabel(selectionState.SelectedUnit, selectionState.SelectedActionMode);
+            var targetLabel = selectionState.HasSelectedTarget ? selectionState.SelectedTarget.ToString() : "No target selected";
+            return $"Selected Action: {actionLabel}\nTarget: {targetLabel}";
+        }
+
+        private static string FormatTargetingInstructions(SelectionState selectionState)
+        {
+            var targetPrompt = selectionState.HasSelectedTarget
+                ? "Confirm Target or click the same target again to declare."
+                : "Click a target cell or unit to mark it for confirmation.";
+            return $"{FormatSelectedActionSummary(selectionState)}\n{targetPrompt} Escape cancels targeting.";
+        }
+
+        private static string FormatSelectedActionLabel(TacticalUnit unit, SelectionActionMode actionMode)
+        {
+            switch (actionMode)
+            {
+                case SelectionActionMode.Move:
+                    return FormatMoveLabel(FindMoveAbility(unit));
+                case SelectionActionMode.Melee:
+                case SelectionActionMode.Cone:
+                case SelectionActionMode.AreaOfEffect:
+                    var ability = FindAbilityForActionMode(unit, actionMode);
+                    return ability != null ? FormatAbilityLabel(ability) : actionMode.ToString();
+                default:
+                    return actionMode.ToString();
+            }
+        }
+
+        private static AbilityDefinition FindAbilityForActionMode(TacticalUnit unit, SelectionActionMode actionMode)
+        {
+            if (!TryGetActionModeShape(actionMode, out var shape))
+            {
+                return null;
+            }
+
+            var loadout = unit != null ? unit.GetComponent<UnitAbilityLoadout>() : null;
+            if (loadout == null)
+            {
+                return null;
+            }
+
+            var actionAbilities = loadout.GetActionAbilities();
+            for (var i = 0; i < actionAbilities.Count; i += 1)
+            {
+                var ability = actionAbilities[i];
+                if (ability != null && ability.Shape == shape)
+                {
+                    return ability;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsConfirmableActionMode(SelectionActionMode actionMode)
+        {
+            return actionMode == SelectionActionMode.Move
+                || actionMode == SelectionActionMode.Melee
+                || actionMode == SelectionActionMode.Cone
+                || actionMode == SelectionActionMode.AreaOfEffect;
+        }
+
+        private static bool TryGetActionModeShape(SelectionActionMode actionMode, out AbilityShape shape)
+        {
+            switch (actionMode)
+            {
+                case SelectionActionMode.Melee:
+                    shape = AbilityShape.Melee;
+                    return true;
+                case SelectionActionMode.Cone:
+                    shape = AbilityShape.Cone;
+                    return true;
+                case SelectionActionMode.AreaOfEffect:
+                    shape = AbilityShape.Radius;
+                    return true;
+                default:
+                    shape = default;
+                    return false;
+            }
         }
 
         private static string FormatAbilityLabel(AbilityDefinition ability)

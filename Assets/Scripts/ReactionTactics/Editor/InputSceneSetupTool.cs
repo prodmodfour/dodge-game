@@ -86,7 +86,7 @@ namespace ReactionTactics.Editor
                 ConfigureCommandRouter(commandRouter, selectionController, gridPicker, combatManager);
                 ConfigureHoverOverlay(hoverOverlay, gridPicker, gridManager, unitRegistry, camera, reactionMovementSafetyPreview);
                 ConfigureActiveActionMenu(activeActionMenu, selectionController, commandRouter, combatManager);
-                ConfigureReactionMenu(reactionMenu, commandRouter, combatManager);
+                ConfigureReactionMenu(reactionMenu, commandRouter, selectionController, combatManager);
                 ConfigureGridHighlightManager(gridHighlightManager, terrainView);
                 ConfigureActiveMovementPreview(activeMovementPreview, selectionController, combatManager, gridManager, unitRegistry, gridHighlightManager);
                 ConfigureActionDangerPreview(actionDangerPreview, selectionController, gridPicker, combatManager, gridManager, unitRegistry, gridHighlightManager);
@@ -375,11 +375,13 @@ namespace ReactionTactics.Editor
         private static void ConfigureReactionMenu(
             ReactionMenu reactionMenu,
             PlayerCommandRouter commandRouter,
+            SelectionController selectionController,
             CombatManager combatManager)
         {
             var serializedObject = new SerializedObject(reactionMenu);
             serializedObject.Update();
             SetObjectReference(serializedObject, "commandRouter", commandRouter);
+            SetObjectReference(serializedObject, "selectionController", selectionController);
             SetObjectReference(serializedObject, "combatManager", combatManager);
             SetBool(serializedObject, "visible", true);
             SetBool(serializedObject, "showWhenNotReacting", false);

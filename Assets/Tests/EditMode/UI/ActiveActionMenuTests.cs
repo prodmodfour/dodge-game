@@ -104,6 +104,25 @@ namespace ReactionTactics.Tests.EditMode.UI
                 Assert.That(summary, Does.Contain("Active: Action Menu Test Unit"));
                 Assert.That(summary, Does.Contain("Selected: Action Menu Test Unit"));
                 Assert.That(summary, Does.Contain("AP: 4/6"));
+                Assert.That(summary, Does.Contain("Selected Action: None"));
+            }
+        }
+
+        [Test]
+        public void FormatSelectedUnitSummaryReportsSelectedActionCostAndTarget()
+        {
+            using (var fixture = new Fixture())
+            {
+                var actor = fixture.CreateUnit("Targeting Summary Unit", new UnitId(6), TeamId.Player);
+                fixture.AssignLoadout(actor, fixture.Move, fixture.MeleeSlash, fixture.ConeShot, fixture.Fireball);
+                var targetCell = new GridPosition(2, 0, 1);
+                var selection = new SelectionState(actor, false, GridPosition.Zero, SelectionActionMode.Cone, SelectionTarget.ForCell(targetCell));
+                var combatState = new CombatState(1, CombatPhase.ActiveTurn, actor);
+
+                var summary = ActiveActionMenu.FormatSelectedUnitSummary(selection, combatState);
+
+                Assert.That(summary, Does.Contain("Selected Action: Cone Shot (4 AP)"));
+                Assert.That(summary, Does.Contain("Target: Cell (2,0,1)"));
             }
         }
 

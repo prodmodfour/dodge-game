@@ -113,6 +113,26 @@ namespace ReactionTactics.Tests.EditMode.UI
                 Assert.That(summary, Does.Contain("Actor: Reaction Menu Test Unit"));
                 Assert.That(summary, Does.Contain("Reactor: Reaction Menu Test Unit"));
                 Assert.That(summary, Does.Contain("AP: 4/6"));
+                Assert.That(summary, Does.Contain("Selected Reaction: None"));
+            }
+        }
+
+        [Test]
+        public void FormatReactionSummaryReportsSelectedReactionCostAndTarget()
+        {
+            using (var fixture = new Fixture())
+            {
+                var actor = fixture.CreateUnit("Selected Reaction Actor", new UnitId(10), TeamId.Player, GridPosition.Zero);
+                var reactor = fixture.CreateUnit("Selected Reaction Reactor", new UnitId(11), TeamId.Enemy, GridPosition.East);
+                fixture.AssignLoadout(reactor, fixture.Move, fixture.Brace, fixture.PassReaction);
+                var targetCell = new GridPosition(2, 0, 0);
+                var combatState = fixture.CreateReactionState(actor, reactor);
+                var selectionState = new SelectionState(reactor, false, GridPosition.Zero, SelectionActionMode.Move, SelectionTarget.ForCell(targetCell));
+
+                var summary = ReactionMenu.FormatReactionSummary(combatState, selectionState);
+
+                Assert.That(summary, Does.Contain("Selected Reaction: Reaction Move (path AP)"));
+                Assert.That(summary, Does.Contain("Target: Cell (2,0,0)"));
             }
         }
 

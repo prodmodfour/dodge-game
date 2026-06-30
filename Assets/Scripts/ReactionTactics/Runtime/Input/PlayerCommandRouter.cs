@@ -269,6 +269,58 @@ namespace ReactionTactics.Input
             return Reject("No target is selected or hovered to confirm.");
         }
 
+        public TacticalResult SelectTargetCellForConfirmation(GridPosition cell)
+        {
+            return SelectTargetForConfirmation(SelectionTarget.ForCell(cell));
+        }
+
+        public TacticalResult SelectTargetUnitForConfirmation(TacticalUnit unit)
+        {
+            if (unit == null)
+            {
+                return Reject("Cannot select a missing tactical unit target.");
+            }
+
+            return SelectTargetForConfirmation(SelectionTarget.ForUnit(unit));
+        }
+
+        public TacticalResult SelectTargetForConfirmation(SelectionTarget target)
+        {
+            if (IsReactionControlActive())
+            {
+                var focusResult = FocusCurrentReactorSelection();
+                if (focusResult.IsFailure)
+                {
+                    return Reject(focusResult);
+                }
+            }
+
+            if (!TryGetControllerWithSelectedUnit(out var controller, out var failure))
+            {
+                return Reject(failure);
+            }
+
+            if (controller.SelectedActionMode == SelectionActionMode.None)
+            {
+                return Reject("Select a move, attack, or reaction command before choosing a target.");
+            }
+
+            var result = ApplyTargetSelection(controller, target);
+            if (result.IsFailure)
+            {
+                return Reject(result);
+            }
+
+            if (logRoutedCommands)
+            {
+                Debug.Log(
+                    $"PlayerCommandRouter selected target for confirmation: unit={DescribeUnit(controller.SelectedUnit)} mode={controller.SelectedActionMode} target={controller.SelectedTarget}",
+                    this);
+            }
+
+            return TacticalResult.Success();
+        }
+
         public TacticalResult ConfirmTarget(SelectionTarget target)
         {
             if (IsReactionControlActive())
@@ -290,21 +342,7 @@ namespace ReactionTactics.Input
                 return Reject("Select a move or attack command before confirming a target.");
             }
 
-            TacticalResult result;
-            switch (target.Kind)
-            {
-                case SelectionTargetKind.Cell:
-                    controller.SetTargetCell(target.Cell);
-                    result = TacticalResult.Success();
-                    break;
-                case SelectionTargetKind.Unit:
-                    result = controller.SetTargetUnit(target.Unit);
-                    break;
-                default:
-                    result = TacticalResult.Failure("Cannot confirm an empty target.");
-                    break;
-            }
-
+            var result = ApplyTargetSelection(controller, target);
             if (result.IsFailure)
             {
                 return Reject(result);
@@ -514,7 +552,7 @@ namespace ReactionTactics.Input
             var controller = ResolveSelectionController();
             if (controller != null && IsAttackMode(controller.SelectedActionMode))
             {
-                ConfirmTargetUnit(result.Unit);
+                SelectOrConfirmPickedTarget(SelectionTarget.ForUnit(result.Unit));
                 return;
             }
 
@@ -536,7 +574,25 @@ namespace ReactionTactics.Input
                 return;
             }
 
-            ConfirmTargetCell(result.Position);
+            SelectOrConfirmPickedTarget(SelectionTarget.ForCell(result.Position));
+        }
+
+        private void SelectOrConfirmPickedTarget(SelectionTarget target)
+        {
+            var controller = ResolveSelectionController();
+            if (controller == null)
+            {
+                Reject("PlayerCommandRouter requires a SelectionController before routing target clicks.");
+                return;
+            }
+
+            if (controller.SelectedTarget.HasTarget && TargetsMatch(controller.SelectedTarget, target))
+            {
+                ConfirmTarget(target);
+                return;
+            }
+
+            SelectTargetForConfirmation(target);
         }
 
         private TacticalResult SelectReactionMode(SelectionActionMode reactionMode)
@@ -660,6 +716,20 @@ namespace ReactionTactics.Input
             return TacticalResult.Success();
         }
 
+        private static TacticalResult ApplyTargetSelection(SelectionController controller, SelectionTarget target)
+        {
+            switch (target.Kind)
+            {
+                case SelectionTargetKind.Cell:
+                    controller.SetTargetCell(target.Cell);
+                    return TacticalResult.Success();
+                case SelectionTargetKind.Unit:
+                    return controller.SetTargetUnit(target.Unit);
+                default:
+                    return TacticalResult.Failure("Cannot select or confirm an empty target.");
+            }
+        }
+
         private TacticalResult Reject(string errorMessage)
         {
             return Reject(TacticalResult.Failure(errorMessage));
@@ -747,6 +817,24 @@ namespace ReactionTactics.Input
             return actionMode == SelectionActionMode.Melee
                 || actionMode == SelectionActionMode.Cone
                 || actionMode == SelectionActionMode.AreaOfEffect;
+        }
+
+        private static bool TargetsMatch(SelectionTarget currentTarget, SelectionTarget clickedTarget)
+        {
+            if (currentTarget.Kind != clickedTarget.Kind)
+            {
+                return false;
+            }
+
+            switch (currentTarget.Kind)
+            {
+                case SelectionTargetKind.Cell:
+                    return currentTarget.Cell == clickedTarget.Cell;
+                case SelectionTargetKind.Unit:
+                    return ReferenceEquals(currentTarget.Unit, clickedTarget.Unit);
+                default:
+                    return true;
+            }
         }
 
         private static string DescribeUnit(TacticalUnit unit)

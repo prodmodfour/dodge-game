@@ -58,6 +58,8 @@ namespace ReactionTactics.UI
 
         private readonly List<GridPosition> movementRangeBuffer = new List<GridPosition>();
         private MovementPreview currentPreview;
+        private bool appliedHoverPathHighlight;
+        private bool appliedTargetCellHighlight;
         private string lastFeedback = string.Empty;
         private GUIStyle feedbackStyle;
 
@@ -296,9 +298,9 @@ namespace ReactionTactics.UI
                 return false;
             }
 
-            if (selectionState.HasHoveredCell)
+            if (TryGetPreviewDestination(selectionState, out var previewDestination))
             {
-                preview = preview.RecomputeSelectedPath(selectionState.HoveredCell);
+                preview = preview.RecomputeSelectedPath(previewDestination);
                 feedback = FormatHoverFeedback(selectedUnit, preview);
                 return true;
             }
@@ -357,12 +359,14 @@ namespace ReactionTactics.UI
             if (preview.HasSelectedPath)
             {
                 highlightManager.SetHoverPath(preview.SelectedPath.Positions);
+                appliedHoverPathHighlight = true;
                 highlightManager.HighlightCell(GridHighlightCategory.TargetCell, preview.SelectedPath.Destination);
+                appliedTargetCellHighlight = true;
             }
             else
             {
-                highlightManager.ClearHoverPath();
-                highlightManager.ClearCategory(GridHighlightCategory.TargetCell);
+                ClearOwnedHoverPathHighlight();
+                ClearOwnedTargetCellHighlight();
             }
         }
 
@@ -374,8 +378,48 @@ namespace ReactionTactics.UI
             }
 
             highlightManager.ClearCategory(GridHighlightCategory.MovementRange);
+            ClearOwnedHoverPathHighlight();
+            ClearOwnedTargetCellHighlight();
+        }
+
+        private void ClearOwnedHoverPathHighlight()
+        {
+            if (!appliedHoverPathHighlight || highlightManager == null)
+            {
+                return;
+            }
+
             highlightManager.ClearHoverPath();
+            appliedHoverPathHighlight = false;
+        }
+
+        private void ClearOwnedTargetCellHighlight()
+        {
+            if (!appliedTargetCellHighlight || highlightManager == null)
+            {
+                return;
+            }
+
             highlightManager.ClearCategory(GridHighlightCategory.TargetCell);
+            appliedTargetCellHighlight = false;
+        }
+
+        private static bool TryGetPreviewDestination(SelectionState selectionState, out GridPosition destination)
+        {
+            if (selectionState.SelectedTarget.HasCell)
+            {
+                destination = selectionState.SelectedTarget.CurrentCell;
+                return true;
+            }
+
+            if (selectionState.HasHoveredCell)
+            {
+                destination = selectionState.HoveredCell;
+                return true;
+            }
+
+            destination = GridPosition.Zero;
+            return false;
         }
 
         private bool IsMoveModeSelected()
