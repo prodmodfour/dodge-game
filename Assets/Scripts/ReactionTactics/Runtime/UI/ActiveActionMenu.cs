@@ -235,15 +235,19 @@ namespace ReactionTactics.UI
 
             var router = ResolveCommandRouter();
             var previousEnabled = GUI.enabled;
-            GUI.enabled = previousEnabled && router != null && selectionState.HasSelectedTarget;
-            if (GUILayout.Button("Confirm Target", GUILayout.Height(26f)))
+            var moveExecutesOnClick = selectionState.SelectedActionMode == SelectionActionMode.Move;
+            if (!moveExecutesOnClick)
             {
-                var result = router.ConfirmCurrentTarget();
-                lastFeedback = result.IsSuccess ? "Confirmed target." : result.ErrorMessage;
+                GUI.enabled = previousEnabled && router != null && selectionState.HasSelectedTarget;
+                if (GUILayout.Button("Confirm Target", GUILayout.Height(26f)))
+                {
+                    var result = router.ConfirmCurrentTarget();
+                    lastFeedback = result.IsSuccess ? "Confirmed target." : result.ErrorMessage;
+                }
             }
 
             GUI.enabled = previousEnabled && router != null;
-            if (GUILayout.Button("Cancel Selection (Esc)", GUILayout.Height(24f)))
+            if (GUILayout.Button(moveExecutesOnClick ? "Cancel Move (Esc)" : "Cancel Selection (Esc)", GUILayout.Height(24f)))
             {
                 var result = router.Cancel();
                 lastFeedback = result.IsSuccess ? "Canceled selected action." : result.ErrorMessage;
@@ -295,6 +299,11 @@ namespace ReactionTactics.UI
             if (entry.Kind == ActiveActionMenuEntryKind.EndTurn)
             {
                 return "Requested End Turn.";
+            }
+
+            if (entry.Kind == ActiveActionMenuEntryKind.Move)
+            {
+                return "Selected Move. Hover highlighted cells to preview a path; click a reachable destination to move. Esc cancels.";
             }
 
             return $"Selected {entry.ShortName}. Click a target to mark it, then Confirm Target or click the same target again. Esc cancels.";
@@ -539,6 +548,11 @@ namespace ReactionTactics.UI
 
         private static string FormatTargetingInstructions(SelectionState selectionState)
         {
+            if (selectionState.SelectedActionMode == SelectionActionMode.Move)
+            {
+                return $"{FormatSelectedActionSummary(selectionState)}\nHover highlighted cells to preview their path. Click a reachable destination to move immediately. Escape cancels movement.";
+            }
+
             var targetPrompt = selectionState.HasSelectedTarget
                 ? "Confirm Target or click the same target again to declare."
                 : "Click a target cell or unit to mark it for confirmation.";

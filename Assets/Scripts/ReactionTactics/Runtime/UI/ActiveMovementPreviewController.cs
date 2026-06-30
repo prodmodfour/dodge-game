@@ -58,6 +58,7 @@ namespace ReactionTactics.UI
 
         private readonly List<GridPosition> movementRangeBuffer = new List<GridPosition>();
         private MovementPreview currentPreview;
+        private SelectionController subscribedSelectionController;
         private bool appliedHoverPathHighlight;
         private bool appliedTargetCellHighlight;
         private string lastFeedback = string.Empty;
@@ -66,7 +67,27 @@ namespace ReactionTactics.UI
         public SelectionController SelectionController
         {
             get { return selectionController; }
-            set { selectionController = value; }
+            set
+            {
+                if (selectionController == value)
+                {
+                    if (isActiveAndEnabled)
+                    {
+                        SubscribeToSelectionController();
+                    }
+
+                    return;
+                }
+
+                UnsubscribeFromSelectionController();
+                selectionController = value;
+
+                if (isActiveAndEnabled)
+                {
+                    SubscribeToSelectionController();
+                    RefreshPreview();
+                }
+            }
         }
 
         public CombatManager CombatManager
@@ -133,11 +154,16 @@ namespace ReactionTactics.UI
             UnitRegistry unitRegistry,
             GridHighlightManager highlightManager)
         {
-            this.selectionController = selectionController;
             this.combatManager = combatManager;
             this.gridManager = gridManager;
             this.unitRegistry = unitRegistry;
             this.highlightManager = highlightManager;
+            SelectionController = selectionController;
+
+            if (isActiveAndEnabled)
+            {
+                RefreshPreview();
+            }
         }
 
         /// <summary>
@@ -201,11 +227,13 @@ namespace ReactionTactics.UI
         private void OnEnable()
         {
             ResolveMissingReferences();
+            SubscribeToSelectionController();
             RefreshPreview();
         }
 
         private void OnDisable()
         {
+            UnsubscribeFromSelectionController();
             ClearMovementHighlights();
             currentPreview = null;
             lastFeedback = string.Empty;
@@ -433,7 +461,7 @@ namespace ReactionTactics.UI
         {
             if (selectionController == null)
             {
-                selectionController = FindAnyObjectByType<SelectionController>();
+                SelectionController = FindAnyObjectByType<SelectionController>();
             }
 
             if (combatManager == null)
@@ -455,6 +483,34 @@ namespace ReactionTactics.UI
             {
                 highlightManager = FindAnyObjectByType<GridHighlightManager>();
             }
+        }
+
+        private void SubscribeToSelectionController()
+        {
+            if (selectionController == null || subscribedSelectionController == selectionController)
+            {
+                return;
+            }
+
+            UnsubscribeFromSelectionController();
+            subscribedSelectionController = selectionController;
+            subscribedSelectionController.StateChanged += HandleSelectionStateChanged;
+        }
+
+        private void UnsubscribeFromSelectionController()
+        {
+            if (subscribedSelectionController == null)
+            {
+                return;
+            }
+
+            subscribedSelectionController.StateChanged -= HandleSelectionStateChanged;
+            subscribedSelectionController = null;
+        }
+
+        private void HandleSelectionStateChanged(SelectionState state)
+        {
+            RefreshPreview();
         }
 
         private void EnsureStyles()

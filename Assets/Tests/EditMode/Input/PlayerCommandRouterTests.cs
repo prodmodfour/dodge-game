@@ -304,16 +304,13 @@ namespace ReactionTactics.Tests.EditMode.Input
                 Assert.That(router.SelectMove().IsSuccess, Is.True);
                 Assert.That(fixture.Picker.TryClickScreenPosition(screenPosition, out _, out _), Is.True);
 
-                Assert.That(requests[requests.Count - 1].CommandType, Is.EqualTo(PlayerCommandType.SelectMove));
-                Assert.That(selection.SelectedTarget.Kind, Is.EqualTo(SelectionTargetKind.Cell));
-                Assert.That(selection.SelectedTarget.Cell, Is.EqualTo(new GridPosition(4, 0, 5)));
-
-                Assert.That(fixture.Picker.TryClickScreenPosition(screenPosition, out _, out _), Is.True);
-
                 var lastRequest = requests[requests.Count - 1];
                 Assert.That(lastRequest.CommandType, Is.EqualTo(PlayerCommandType.ConfirmTarget));
+                Assert.That(lastRequest.ActionMode, Is.EqualTo(SelectionActionMode.Move));
                 Assert.That(lastRequest.Target.Kind, Is.EqualTo(SelectionTargetKind.Cell));
                 Assert.That(lastRequest.Target.Cell, Is.EqualTo(new GridPosition(4, 0, 5)));
+                Assert.That(selection.SelectedTarget.Kind, Is.EqualTo(SelectionTargetKind.Cell));
+                Assert.That(selection.SelectedTarget.Cell, Is.EqualTo(new GridPosition(4, 0, 5)));
             }
             finally
             {

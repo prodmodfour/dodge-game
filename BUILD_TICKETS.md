@@ -4053,7 +4053,7 @@ unity-ctrl --project "$PWD" rt_validate_prototype_scene
 
 ## 138 — Wire active movement to UI and command router
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: integrate active movement gameplay flow`
 

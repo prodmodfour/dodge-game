@@ -574,6 +574,12 @@ namespace ReactionTactics.Input
                 return;
             }
 
+            if (controller.SelectedActionMode == SelectionActionMode.Move && !IsReactionControlActive())
+            {
+                ConfirmTargetCell(result.Position);
+                return;
+            }
+
             SelectOrConfirmPickedTarget(SelectionTarget.ForCell(result.Position));
         }
 

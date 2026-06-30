@@ -50,7 +50,8 @@ These values mean the minimum default HP is 12 while the highest single hit is 4
 
 ### Targeting confirmation
 
-- Mouse targeting uses a two-step confirmation flow for movement and targeted abilities: the first click marks the unit or cell as the selected target, and the command is declared only after the player clicks the same target again or presses the on-screen Confirm button.
+- Active movement executes immediately after selecting Move: hovering highlighted cells previews the path and AP cost, then clicking a reachable destination spends AP and moves the active unit.
+- Targeted attacks and reaction movement use a two-step confirmation flow: the first click marks the unit or cell as the selected target, and the command is declared only after the player clicks the same target again or presses the on-screen Confirm button.
 - `Escape` cancels the selected action or reaction mode, clears the pending target, and removes transient targeting highlights so the player can recover from a wrong click.
 - Programmatic command tests and UI buttons may call the router's explicit confirm method directly when they already own a deliberate target selection.
 
