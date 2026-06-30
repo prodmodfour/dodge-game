@@ -34,6 +34,21 @@ namespace ReactionTactics.Grid
             get { return CurrentMap != null; }
         }
 
+        /// <summary>
+        /// Assigns the map definition used by this manager and optionally rebuilds the runtime map immediately.
+        /// </summary>
+        public bool SetMapDefinition(GridMapDefinition mapDefinition, bool rebuild = true)
+        {
+            this.mapDefinition = mapDefinition;
+            if (!rebuild)
+            {
+                CurrentMap = null;
+                return true;
+            }
+
+            return RebuildMap();
+        }
+
         public bool RebuildMap()
         {
             if (mapDefinition == null)

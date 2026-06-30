@@ -3869,7 +3869,7 @@ unity-ctrl --project "$PWD" rt_find_assets --params '{"filter":"t:ScenarioDefini
 
 ## 132 — Add scenario loader component
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add scenario loader component`
 

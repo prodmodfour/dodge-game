@@ -182,6 +182,26 @@ namespace ReactionTactics.Turns
         }
 
         /// <summary>
+        /// Returns combat orchestration to a clean NotStarted state so a scenario loader
+        /// can replace the map and unit roster before combat starts again.
+        /// </summary>
+        public void ResetForScenarioLoad()
+        {
+            StopPendingAiPacingCoroutines();
+            UnsubscribeFromRegisteredUnitDeaths();
+            if (currentReactionWindow != null && currentReactionWindow.IsOpen)
+            {
+                currentReactionWindow.Close();
+            }
+
+            currentReactionWindow = null;
+            currentState.Reset();
+            turnOrderService.SetUnits(new TacticalUnit[0]);
+            ClearCombatEndOutcome();
+            ClearCombatOverSelection();
+        }
+
+        /// <summary>
         /// Starts the initial combat round and selects the first living unit in deterministic turn order.
         /// </summary>
         public TacticalResult StartCombat()
