@@ -89,6 +89,40 @@ public sealed class ReactionMoveCommandTests
     }
 
     [Test]
+    public void RoutedReactionMoveTargetExecutesCurrentReactionMove()
+    {
+        using (var fixture = new Fixture())
+        {
+            var actor = fixture.CreateUnit("Routed Reaction Move Actor", new UnitId(1), TeamId.Player, new GridPosition(0, 0, 0));
+            var targetReactor = fixture.CreateUnit("Routed Reaction Move Target", new UnitId(2), TeamId.Enemy, new GridPosition(1, 0, 0));
+            fixture.AssignLoadout(actor, fixture.MeleeSlash);
+
+            Assert.That(fixture.Manager.StartCombat().IsSuccess, Is.True);
+            Assert.That(fixture.InputRouter.SelectUnit(actor).IsSuccess, Is.True);
+            Assert.That(fixture.InputRouter.SelectMeleeAttack().IsSuccess, Is.True);
+            Assert.That(fixture.InputRouter.ConfirmTargetUnit(targetReactor).IsSuccess, Is.True);
+            Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ReactionWindow));
+            Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.SameAs(targetReactor));
+
+            var destination = new GridPosition(2, 0, 0);
+            var apBeforeMove = targetReactor.CurrentAP;
+
+            Assert.That(fixture.InputRouter.SelectMove().IsSuccess, Is.True);
+            Assert.That(fixture.InputRouter.ConfirmTargetCell(destination).IsSuccess, Is.True);
+
+            Assert.That(targetReactor.CurrentGridPosition, Is.EqualTo(destination));
+            Assert.That(targetReactor.CurrentAP, Is.EqualTo(apBeforeMove - 1));
+            Assert.That(targetReactor.CurrentHP, Is.EqualTo(targetReactor.MaxHP));
+            Assert.That(fixture.Registry.IsOccupied(destination), Is.True);
+            Assert.That(fixture.Manager.CurrentReactionWindow, Is.Null);
+            Assert.That(fixture.Manager.CurrentState.Phase, Is.EqualTo(CombatPhase.ActiveTurn));
+            Assert.That(fixture.Manager.CurrentState.ActiveUnit, Is.SameAs(actor));
+            Assert.That(fixture.Manager.CurrentState.ReactingUnit, Is.Null);
+            Assert.That(fixture.Manager.CurrentState.PendingActionIntent, Is.Null);
+        }
+    }
+
+    [Test]
     public void ReactionMoveIsRejectedOutsideCurrentReactorTurnOrIntoOccupiedCell()
     {
         using (var fixture = new Fixture())

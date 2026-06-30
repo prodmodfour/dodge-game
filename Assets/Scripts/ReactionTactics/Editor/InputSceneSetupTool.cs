@@ -51,6 +51,7 @@ namespace ReactionTactics.Editor
                 var commandRouterCreated = false;
                 var hoverOverlayCreated = false;
                 var activeActionMenuCreated = false;
+                var reactionMenuCreated = false;
 
                 var systemsRoot = EnsureRootObject(scene, SystemsRootName, ref systemsRootCreated);
                 var uiRoot = EnsureRootObject(scene, UiRootName, ref uiRootCreated);
@@ -61,6 +62,7 @@ namespace ReactionTactics.Editor
                 var commandRouter = EnsureSceneComponent<PlayerCommandRouter>(scene, systemsRoot, ref commandRouterCreated);
                 var hoverOverlay = EnsureSceneComponent<HoverGridDebugOverlay>(scene, uiRoot, ref hoverOverlayCreated);
                 var activeActionMenu = EnsureSceneComponent<ActiveActionMenu>(scene, uiRoot, ref activeActionMenuCreated);
+                var reactionMenu = EnsureSceneComponent<ReactionMenu>(scene, uiRoot, ref reactionMenuCreated);
                 var gridManager = FindComponentInScene<GridManager>(scene);
                 var unitRegistry = FindComponentInScene<UnitRegistry>(scene);
                 var combatManager = FindComponentInScene<CombatManager>(scene);
@@ -71,6 +73,7 @@ namespace ReactionTactics.Editor
                 ConfigureCommandRouter(commandRouter, selectionController, gridPicker, combatManager);
                 ConfigureHoverOverlay(hoverOverlay, gridPicker, gridManager, unitRegistry, camera);
                 ConfigureActiveActionMenu(activeActionMenu, selectionController, commandRouter, combatManager);
+                ConfigureReactionMenu(reactionMenu, commandRouter, combatManager);
 
                 if (gridManager != null && gridManager.RebuildMap())
                 {
@@ -114,6 +117,8 @@ namespace ReactionTactics.Editor
                     hoverOverlayCreated,
                     activeActionMenu = GetScenePath(activeActionMenu.gameObject),
                     activeActionMenuCreated,
+                    reactionMenu = GetScenePath(reactionMenu.gameObject),
+                    reactionMenuCreated,
                     references = new
                     {
                         gridManager = gridManager != null ? GetScenePath(gridManager.gameObject) : null,
@@ -335,6 +340,21 @@ namespace ReactionTactics.Editor
             SetBool(serializedObject, "visible", true);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(activeActionMenu);
+        }
+
+        private static void ConfigureReactionMenu(
+            ReactionMenu reactionMenu,
+            PlayerCommandRouter commandRouter,
+            CombatManager combatManager)
+        {
+            var serializedObject = new SerializedObject(reactionMenu);
+            serializedObject.Update();
+            SetObjectReference(serializedObject, "commandRouter", commandRouter);
+            SetObjectReference(serializedObject, "combatManager", combatManager);
+            SetBool(serializedObject, "visible", true);
+            SetBool(serializedObject, "showWhenNotReacting", false);
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(reactionMenu);
         }
 
         private static void SetObjectReference(SerializedObject serializedObject, string propertyName, UnityEngine.Object value)

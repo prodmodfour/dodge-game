@@ -3263,7 +3263,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 111 — Add reaction menu
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add reaction menu`
 

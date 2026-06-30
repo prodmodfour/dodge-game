@@ -689,6 +689,29 @@ namespace ReactionTactics.Turns
             }
 
             if (request.CommandType == PlayerCommandType.SelectReaction
+                && request.ActionMode == SelectionActionMode.Move)
+            {
+                if (!request.HasTarget)
+                {
+                    return;
+                }
+
+                if (request.Target.Kind != SelectionTargetKind.Cell)
+                {
+                    Debug.LogWarning($"{nameof(CombatManager)} could not reaction move: reaction movement requires a target cell.", this);
+                    return;
+                }
+
+                var moveResult = MoveCurrentReaction(request.Unit ?? currentState.ReactingUnit, request.Target.Cell);
+                if (moveResult.IsFailure)
+                {
+                    Debug.LogWarning($"{nameof(CombatManager)} could not reaction move: {moveResult.ErrorMessage}", this);
+                }
+
+                return;
+            }
+
+            if (request.CommandType == PlayerCommandType.SelectReaction
                 && request.ActionMode == SelectionActionMode.Brace)
             {
                 var braceResult = BraceCurrentReaction(request.Unit ?? currentState.ReactingUnit);

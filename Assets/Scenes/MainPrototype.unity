@@ -1082,6 +1082,7 @@ GameObject:
   - component: {fileID: 1047836512}
   - component: {fileID: 1047836513}
   - component: {fileID: 1047836514}
+  - component: {fileID: 1047836515}
   m_Layer: 0
   m_Name: UI
   m_TagString: Untagged
@@ -1178,6 +1179,30 @@ MonoBehaviour:
     width: 360
     height: 220
   panelTitle: Active Actions
+  showDisabledReasons: 1
+--- !u!114 &1047836515
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047836510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58ee140df6df8cc558353569ca745f57, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.ReactionMenu
+  commandRouter: {fileID: 1092979093}
+  combatManager: {fileID: 1092979095}
+  visible: 1
+  showWhenNotReacting: 0
+  panelRect:
+    serializedVersion: 2
+    x: 388
+    y: 330
+    width: 340
+    height: 210
+  panelTitle: Reaction Menu
   showDisabledReasons: 1
 --- !u!1 &1092979089
 GameObject:
