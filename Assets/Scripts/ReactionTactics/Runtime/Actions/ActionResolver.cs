@@ -246,16 +246,22 @@ namespace ReactionTactics.Actions
 
         private TacticalResult ApplyDamageAndPublishEvents(TacticalUnit target, int amount, DamageSource source, ActionIntent intent)
         {
-            var finalAmount = amount;
             var previousHP = target.CurrentHP;
             var wasAlive = target.IsAlive;
-            var damageResult = target.ApplyDamage(finalAmount, source);
+            var damageResult = target.ApplyDamageWithReport(amount, source);
             if (damageResult.IsFailure)
             {
-                return damageResult;
+                return damageResult.WithoutValue();
             }
 
-            eventBus?.PublishDamageApplied(intent, intent.Actor, target, amount, wasBraced: false, finalAmount: finalAmount);
+            var application = damageResult.Value;
+            eventBus?.PublishDamageApplied(
+                intent,
+                intent.Actor,
+                target,
+                application.OriginalAmount,
+                application.WasBraced,
+                application.FinalAmount);
 
             if (target.CurrentHP != previousHP)
             {

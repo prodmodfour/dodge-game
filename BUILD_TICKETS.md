@@ -3030,7 +3030,7 @@ unity-ctrl --project "$PWD" test --filter BraceReactionTests
 
 ## 103 — Integrate brace into resolver
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: apply brace during action resolution`
 
