@@ -1333,7 +1333,7 @@ unity-ctrl --project "$PWD" test --filter HealthDamageTests
 
 ## 045 — Add unit registry
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add tactical unit registry`
 
