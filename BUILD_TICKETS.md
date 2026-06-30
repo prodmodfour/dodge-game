@@ -2914,7 +2914,7 @@ unity-ctrl --project "$PWD" test --filter PassReactionTests
 
 ## 099 — Add reaction movement command
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: allow movement as a reaction`
 

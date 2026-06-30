@@ -296,6 +296,71 @@ namespace ReactionTactics.Turns
             return AdvanceReactionWindowOrResolve(sourceIntent);
         }
 
+        /// <summary>
+        /// Moves the current reactor to a reachable destination, spends movement AP,
+        /// completes that reactor's turn, and advances or closes the reaction window.
+        /// </summary>
+        public TacticalResult MoveCurrentReaction(GridPosition destination)
+        {
+            return MoveCurrentReaction(currentState.ReactingUnit, destination);
+        }
+
+        /// <summary>
+        /// Moves a specific unit only when it is the current reactor in the open
+        /// reaction window. Occupancy updates through the unit's authoritative grid position.
+        /// </summary>
+        public TacticalResult MoveCurrentReaction(TacticalUnit reactor, GridPosition destination)
+        {
+            if (unitRegistry == null)
+            {
+                return TacticalResult.Failure($"Cannot reaction move because {nameof(UnitRegistry)} is missing.");
+            }
+
+            var mapResult = ResolveCurrentMapForReactionMove();
+            if (mapResult.IsFailure)
+            {
+                return TacticalResult.Failure(mapResult.ErrorMessage);
+            }
+
+            var commandResult = ReactionMoveCommand.TryCreate(
+                reactor,
+                destination,
+                mapResult.Value,
+                unitRegistry,
+                currentState,
+                currentReactionWindow);
+            if (commandResult.IsFailure)
+            {
+                return TacticalResult.Failure(commandResult.ErrorMessage);
+            }
+
+            var command = commandResult.Value;
+            if (!unitRegistry.TryGetLivingUnit(command.Reactor.UnitId, out var registeredReactor)
+                || !ReferenceEquals(registeredReactor, command.Reactor))
+            {
+                return TacticalResult.Failure($"{DescribeUnit(command.Reactor)} cannot reaction move because it is not the registered living unit for {command.Reactor.UnitId}.");
+            }
+
+            var sourceIntent = command.SourceIntent;
+            var previousAP = command.Reactor.CurrentAP;
+            var previousPosition = command.Reactor.CurrentGridPosition;
+            var executeResult = command.Execute();
+            if (executeResult.IsFailure)
+            {
+                return executeResult;
+            }
+
+            if (command.Reactor.CurrentAP != previousAP)
+            {
+                eventBus?.PublishActionPointsChanged(command.Reactor, previousAP, command.Reactor.CurrentAP);
+            }
+
+            currentReactionWindow.CompleteCurrentReactor();
+            LogReactionMove(command, previousPosition, previousAP);
+            currentState.SetState(currentState.CurrentRound, CombatPhase.ReactionWindow, sourceIntent.Actor, null, sourceIntent);
+            return AdvanceReactionWindowOrResolve(sourceIntent);
+        }
+
         private void Awake()
         {
             ResolveSceneReferences();
@@ -752,6 +817,26 @@ namespace ReactionTactics.Turns
             return TacticalResult<IGridMap>.Success(gridManager.CurrentMap);
         }
 
+        private TacticalResult<IGridMap> ResolveCurrentMapForReactionMove()
+        {
+            if (gridManager == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot reaction move because {nameof(GridManager)} is missing.");
+            }
+
+            if (!gridManager.HasCurrentMap && !gridManager.RebuildMap())
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot reaction move because {nameof(GridManager)} could not build a current map.");
+            }
+
+            if (gridManager.CurrentMap == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot reaction move because {nameof(GridManager)} has no current map.");
+            }
+
+            return TacticalResult<IGridMap>.Success(gridManager.CurrentMap);
+        }
+
         private void PublishActionDeclarationEvents(ActionIntent intent, int previousAP)
         {
             if (intent.Actor.CurrentAP != previousAP)
@@ -833,6 +918,18 @@ namespace ReactionTactics.Turns
 
             Debug.Log(
                 $"[Combat Log] {DescribeUnit(command.Reactor)} passed reaction to '{command.SourceIntent.Ability.DisplayName}' for {command.Cost} AP.",
+                this);
+        }
+
+        private void LogReactionMove(ReactionMoveCommand command, GridPosition previousPosition, int previousAP)
+        {
+            if (!logActionFlow)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"[Combat Log] {DescribeUnit(command.Reactor)} reaction-moved from {previousPosition} to {command.Destination} responding to '{command.SourceIntent.Ability.DisplayName}'; AP {previousAP}->{command.Reactor.CurrentAP}.",
                 this);
         }
 
