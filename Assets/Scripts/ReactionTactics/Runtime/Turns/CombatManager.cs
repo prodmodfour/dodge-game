@@ -157,6 +157,51 @@ namespace ReactionTactics.Turns
         }
 
         /// <summary>
+        /// Returns true when the given unit may choose or confirm active-turn actions.
+        /// </summary>
+        public bool CanUnitTakeAction(TacticalUnit unit)
+        {
+            return ValidateUnitCanTakeAction(unit).IsSuccess;
+        }
+
+        /// <summary>
+        /// Validates whether a unit may use active-turn commands. Active actions are legal
+        /// only for the current active unit during ActiveTurn or ActionTargeting phases.
+        /// </summary>
+        public TacticalResult ValidateUnitCanTakeAction(TacticalUnit unit)
+        {
+            if (unit == null)
+            {
+                return TacticalResult.Failure("Cannot take an active action because no tactical unit was provided.");
+            }
+
+            if (!unit.IsAlive)
+            {
+                return TacticalResult.Failure($"{DescribeUnit(unit)} cannot take an active action because it is defeated.");
+            }
+
+            if (!currentState.IsActiveUnitPhase)
+            {
+                return TacticalResult.Failure(
+                    $"{DescribeUnit(unit)} cannot take an active action while combat phase is {currentState.Phase}. "
+                    + $"Active actions are only legal during {CombatPhase.ActiveTurn} or {CombatPhase.ActionTargeting}.");
+            }
+
+            if (currentState.ActiveUnit == null)
+            {
+                return TacticalResult.Failure("Cannot take an active action because no active unit is selected.");
+            }
+
+            if (!ReferenceEquals(unit, currentState.ActiveUnit))
+            {
+                return TacticalResult.Failure(
+                    $"{DescribeUnit(unit)} cannot take an active action because the active unit is {DescribeUnit(currentState.ActiveUnit)}.");
+            }
+
+            return TacticalResult.Success();
+        }
+
+        /// <summary>
         /// Ends the current active unit's turn. The next living unit in deterministic
         /// order becomes active, or a new round starts and refreshes AP when the order is exhausted.
         /// </summary>
@@ -316,16 +361,32 @@ namespace ReactionTactics.Turns
 
         private void HandleCommandRequested(PlayerCommandRequest request)
         {
-            if (request.CommandType != PlayerCommandType.EndTurn)
+            if (request.CommandType == PlayerCommandType.EndTurn)
+            {
+                var endTurnResult = EndActiveTurn();
+                if (endTurnResult.IsFailure)
+                {
+                    Debug.LogWarning($"{nameof(CombatManager)} could not end turn: {endTurnResult.ErrorMessage}", this);
+                }
+
+                return;
+            }
+
+            if (!RequiresActiveActionLegality(request))
             {
                 return;
             }
 
-            var result = EndActiveTurn();
-            if (result.IsFailure)
+            var actionResult = ValidateUnitCanTakeAction(request.Unit);
+            if (actionResult.IsSuccess)
             {
-                Debug.LogWarning($"{nameof(CombatManager)} could not end turn: {result.ErrorMessage}", this);
+                return;
             }
+
+            ClearIllegalActiveActionSelection();
+            Debug.LogWarning(
+                $"{nameof(CombatManager)} rejected active action command {request.CommandType}: {actionResult.ErrorMessage}",
+                this);
         }
 
         private void SubscribeToInputRouter()
@@ -354,6 +415,49 @@ namespace ReactionTactics.Turns
 
             subscribedInputRouter.CommandRequested -= HandleCommandRequested;
             subscribedInputRouter = null;
+        }
+
+        private void ClearIllegalActiveActionSelection()
+        {
+            var selectionController = inputRouter != null ? inputRouter.SelectionController : null;
+            if (selectionController == null || !IsActiveActionMode(selectionController.SelectedActionMode))
+            {
+                return;
+            }
+
+            selectionController.ClearActionMode();
+        }
+
+        private static bool RequiresActiveActionLegality(PlayerCommandRequest request)
+        {
+            switch (request.CommandType)
+            {
+                case PlayerCommandType.SelectMove:
+                case PlayerCommandType.SelectAttack:
+                    return true;
+                case PlayerCommandType.ConfirmTarget:
+                    return IsActiveActionMode(request.ActionMode);
+                default:
+                    return false;
+            }
+        }
+
+        private static bool IsActiveActionMode(SelectionActionMode actionMode)
+        {
+            return actionMode == SelectionActionMode.Move
+                || actionMode == SelectionActionMode.Melee
+                || actionMode == SelectionActionMode.Cone
+                || actionMode == SelectionActionMode.AreaOfEffect;
+        }
+
+        private static string DescribeUnit(TacticalUnit unit)
+        {
+            if (unit == null)
+            {
+                return "no unit";
+            }
+
+            return unit.IsInitialized ? $"{unit.DisplayName} {unit.UnitId}" : unit.DisplayName;
         }
 
         private TacticalResult EnsureRegistryHasUnits()

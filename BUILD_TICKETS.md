@@ -1925,7 +1925,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 065 — Enforce actions only on active unit's turn
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: restrict actions to active unit turn`
 
