@@ -1114,6 +1114,7 @@ GameObject:
   - component: {fileID: 1047836517}
   - component: {fileID: 1047836518}
   - component: {fileID: 1047836519}
+  - component: {fileID: 1047836520}
   m_Layer: 0
   m_Name: UI
   m_TagString: Untagged
@@ -1339,6 +1340,32 @@ MonoBehaviour:
   maxEntries: 24
   showSequenceNumbers: 1
   autoScrollToNewest: 1
+--- !u!114 &1047836520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047836510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2e6aedb80cc530ae8dbedc2b1e7d810, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.CombatEndPanel
+  combatManager: {fileID: 1092979095}
+  eventBus: {fileID: 1092979096}
+  playerTeam: 0
+  visible: 1
+  panelRect:
+    serializedVersion: 2
+    x: 390
+    y: 70
+    width: 420
+    height: 180
+  panelTitle: Combat Complete
+  showRestartButton: 1
+  restartHotkeyEnabled: 1
+  restartShortcut: 114
 --- !u!1 &1092979089
 GameObject:
   m_ObjectHideFlags: 0

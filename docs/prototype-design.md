@@ -104,6 +104,12 @@ Melee uses declaration-in-range, resolution-after-reactions timing:
 - At resolution, units are affected only if their final grid positions are still inside the declared area.
 - Moving out of the area during the reaction window is the way to avoid AoE damage.
 
+## Combat end state
+
+- Combat ends when either the Player team or Enemy team has no living units remaining after both teams are present in the battle.
+- The combat manager enters `CombatOver`, clears active/reaction control, closes any pending reaction window, and disables further action or reaction commands.
+- The prototype UI shows Victory when the Player team wins and Defeat when the Enemy team wins, with a simple restart-scene control for playtest resets.
+
 ## Implementation guidance
 
 - Keep combat rules deterministic and covered by EditMode tests where possible.

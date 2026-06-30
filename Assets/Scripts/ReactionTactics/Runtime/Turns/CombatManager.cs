@@ -14,9 +14,9 @@ namespace ReactionTactics.Turns
     /// <summary>
     /// Scene-level shell for the high-level combat loop. It starts combat, refreshes
     /// round AP, advances active turns, listens for routed commands, opens the
-    /// explicit pass reaction windows for telegraphed actions, and sends
-    /// declared active actions through deterministic resolution; win/loss checks
-    /// are added by later tickets.
+    /// explicit pass reaction windows for telegraphed actions, sends
+    /// declared active actions through deterministic resolution, and enters
+    /// CombatOver when one team has no living units.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class CombatManager : MonoBehaviour
@@ -57,6 +57,10 @@ namespace ReactionTactics.Turns
         private readonly ReactionEligibilityService reactionEligibilityService = new ReactionEligibilityService();
         private PlayerCommandRouter subscribedInputRouter;
         private ReactionWindow currentReactionWindow;
+        private readonly HashSet<TacticalUnit> deathSubscribedUnits = new HashSet<TacticalUnit>();
+        private bool hasCombatEndOutcome;
+        private bool combatEndHasWinningTeam;
+        private TeamId combatEndWinningTeam = TeamId.Player;
 
         public CombatState CurrentState
         {
@@ -66,6 +70,21 @@ namespace ReactionTactics.Turns
         public ReactionWindow CurrentReactionWindow
         {
             get { return currentReactionWindow; }
+        }
+
+        public bool HasCombatEndOutcome
+        {
+            get { return currentState.IsCombatOver && hasCombatEndOutcome; }
+        }
+
+        public bool HasWinningTeam
+        {
+            get { return HasCombatEndOutcome && combatEndHasWinningTeam; }
+        }
+
+        public TeamId WinningTeam
+        {
+            get { return combatEndWinningTeam; }
         }
 
         public TurnOrderService TurnOrder
@@ -121,6 +140,7 @@ namespace ReactionTactics.Turns
             CombatEventBus eventBus = null)
         {
             UnsubscribeFromInputRouter();
+            UnsubscribeFromRegisteredUnitDeaths();
             this.unitRegistry = unitRegistry;
             this.gridManager = gridManager;
             this.inputRouter = inputRouter;
@@ -134,6 +154,7 @@ namespace ReactionTactics.Turns
             if (isActiveAndEnabled)
             {
                 SubscribeToInputRouter();
+                SubscribeToRegisteredUnitDeaths();
             }
         }
 
@@ -159,6 +180,9 @@ namespace ReactionTactics.Turns
                 return bootstrapResult;
             }
 
+            ClearCombatEndOutcome();
+            SubscribeToRegisteredUnitDeaths();
+
             var livingUnits = unitRegistry.GetLivingUnits();
             if (livingUnits.Count == 0)
             {
@@ -183,7 +207,7 @@ namespace ReactionTactics.Turns
                 Debug.Log($"Reaction Tactics active unit: {activeUnit.DisplayName} {activeUnit.UnitId} [{activeUnit.Team}] at {activeUnit.CurrentGridPosition}.", this);
             }
 
-            return TacticalResult.Success();
+            return TryEnterCombatOverIfNeeded(activeUnit);
         }
 
         /// <summary>
@@ -274,6 +298,11 @@ namespace ReactionTactics.Turns
         /// </summary>
         public TacticalResult EndActiveTurn()
         {
+            if (currentState.IsCombatOver)
+            {
+                return TacticalResult.Failure("Cannot end the active turn because combat is already over.");
+            }
+
             if (!currentState.IsActiveUnitPhase)
             {
                 return TacticalResult.Failure($"Cannot end the active turn while combat phase is {currentState.Phase}.");
@@ -290,6 +319,12 @@ namespace ReactionTactics.Turns
             }
 
             var previousActiveUnit = currentState.ActiveUnit;
+            var combatEndResult = TryEnterCombatOverIfNeeded(previousActiveUnit);
+            if (combatEndResult.IsFailure || currentState.IsCombatOver)
+            {
+                return combatEndResult;
+            }
+
             if (turnOrderService.TryAdvanceToNext())
             {
                 if (!turnOrderService.TryGetCurrentActiveUnit(out var nextActiveUnit))
@@ -540,6 +575,7 @@ namespace ReactionTactics.Turns
         private void OnDisable()
         {
             UnsubscribeFromInputRouter();
+            UnsubscribeFromRegisteredUnitDeaths();
         }
 
         private void Start()
@@ -561,6 +597,7 @@ namespace ReactionTactics.Turns
             startCombatOnStart = true;
             logCombatStart = true;
             logActionFlow = true;
+            ClearCombatEndOutcome();
             ResolveSceneReferences();
         }
 
@@ -621,6 +658,12 @@ namespace ReactionTactics.Turns
 
         private TacticalResult StartNextRoundAfterTurnOrderEnds(TacticalUnit previousActiveUnit)
         {
+            var combatEndResult = TryEnterCombatOverIfNeeded(previousActiveUnit);
+            if (combatEndResult.IsFailure || currentState.IsCombatOver)
+            {
+                return combatEndResult;
+            }
+
             var livingUnits = unitRegistry.GetLivingUnits();
             if (livingUnits.Count == 0)
             {
@@ -656,6 +699,18 @@ namespace ReactionTactics.Turns
 
         private void HandleCommandRequested(PlayerCommandRequest request)
         {
+            if (currentState.IsCombatOver)
+            {
+                if (request.CommandType == PlayerCommandType.Cancel)
+                {
+                    ClearCombatOverSelection();
+                    return;
+                }
+
+                Debug.LogWarning($"{nameof(CombatManager)} ignored {request.CommandType} because combat is over.", this);
+                return;
+            }
+
             if (request.CommandType == PlayerCommandType.EndTurn)
             {
                 if (currentState.IsReactionPhase)
@@ -969,6 +1024,12 @@ namespace ReactionTactics.Turns
 
             ClearBraceStatesAfterPendingAction(reactionWindowToClear, intent);
             currentReactionWindow = null;
+            var combatEndResult = TryEnterCombatOverIfNeeded(intent.Actor);
+            if (combatEndResult.IsFailure || currentState.IsCombatOver)
+            {
+                return combatEndResult;
+            }
+
             currentState.SetState(currentState.CurrentRound, CombatPhase.ActiveTurn, intent.Actor, null, null);
             ClearResolvedActionSelection();
             return TacticalResult.Success();
@@ -1018,6 +1079,206 @@ namespace ReactionTactics.Turns
 
             subscribedInputRouter.CommandRequested -= HandleCommandRequested;
             subscribedInputRouter = null;
+        }
+
+        private void SubscribeToRegisteredUnitDeaths()
+        {
+            if (unitRegistry == null)
+            {
+                return;
+            }
+
+            var registeredUnits = unitRegistry.GetRegisteredUnits();
+            for (var i = 0; i < registeredUnits.Count; i += 1)
+            {
+                var unit = registeredUnits[i];
+                if (unit == null || deathSubscribedUnits.Contains(unit))
+                {
+                    continue;
+                }
+
+                unit.Died += HandleRegisteredUnitDied;
+                deathSubscribedUnits.Add(unit);
+            }
+        }
+
+        private void UnsubscribeFromRegisteredUnitDeaths()
+        {
+            foreach (var unit in deathSubscribedUnits)
+            {
+                if (unit != null)
+                {
+                    unit.Died -= HandleRegisteredUnitDied;
+                }
+            }
+
+            deathSubscribedUnits.Clear();
+        }
+
+        private void HandleRegisteredUnitDied(TacticalUnit unit, DamageSource source)
+        {
+            if (currentState.Phase == CombatPhase.NotStarted || currentState.IsCombatOver)
+            {
+                return;
+            }
+
+            if (currentState.IsResolvingAction)
+            {
+                return;
+            }
+
+            var result = TryEnterCombatOverIfNeeded(currentState.ActiveUnit);
+            if (result.IsFailure && logCombatStart)
+            {
+                Debug.LogWarning($"{nameof(CombatManager)} could not evaluate combat end after {DescribeUnit(unit)} died: {result.ErrorMessage}", this);
+            }
+        }
+
+        private TacticalResult TryEnterCombatOverIfNeeded(TacticalUnit previousActiveUnit)
+        {
+            if (currentState.IsCombatOver)
+            {
+                return TacticalResult.Success();
+            }
+
+            if (unitRegistry == null)
+            {
+                return TacticalResult.Failure($"Cannot check combat end because {nameof(UnitRegistry)} is missing.");
+            }
+
+            SubscribeToRegisteredUnitDeaths();
+
+            if (!TryGetCombatEndOutcome(out var hasWinningTeam, out var winningTeam))
+            {
+                return TacticalResult.Success();
+            }
+
+            EnterCombatOver(hasWinningTeam, winningTeam, previousActiveUnit);
+            return TacticalResult.Success();
+        }
+
+        private bool TryGetCombatEndOutcome(out bool hasWinningTeam, out TeamId winningTeam)
+        {
+            var registeredUnits = unitRegistry.GetRegisteredUnits();
+            var playerTeamPresent = false;
+            var enemyTeamPresent = false;
+            var playerAlive = false;
+            var enemyAlive = false;
+
+            for (var i = 0; i < registeredUnits.Count; i += 1)
+            {
+                var unit = registeredUnits[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                if (unit.Team == TeamId.Player)
+                {
+                    playerTeamPresent = true;
+                    playerAlive |= unit.IsAlive;
+                }
+                else if (unit.Team == TeamId.Enemy)
+                {
+                    enemyTeamPresent = true;
+                    enemyAlive |= unit.IsAlive;
+                }
+            }
+
+            if (!playerTeamPresent || !enemyTeamPresent)
+            {
+                hasWinningTeam = false;
+                winningTeam = TeamId.Player;
+                return false;
+            }
+
+            if (playerAlive && enemyAlive)
+            {
+                hasWinningTeam = false;
+                winningTeam = TeamId.Player;
+                return false;
+            }
+
+            if (playerAlive)
+            {
+                hasWinningTeam = true;
+                winningTeam = TeamId.Player;
+                return true;
+            }
+
+            if (enemyAlive)
+            {
+                hasWinningTeam = true;
+                winningTeam = TeamId.Enemy;
+                return true;
+            }
+
+            hasWinningTeam = false;
+            winningTeam = TeamId.Player;
+            return true;
+        }
+
+        private void EnterCombatOver(bool hasWinningTeam, TeamId winningTeam, TacticalUnit previousActiveUnit)
+        {
+            if (currentReactionWindow != null && currentReactionWindow.IsOpen)
+            {
+                currentReactionWindow.Close();
+            }
+
+            currentReactionWindow = null;
+            hasCombatEndOutcome = true;
+            combatEndHasWinningTeam = hasWinningTeam;
+            combatEndWinningTeam = winningTeam;
+
+            var previousActive = previousActiveUnit != null ? previousActiveUnit : currentState.ActiveUnit;
+            currentState.SetState(currentState.CurrentRound, CombatPhase.CombatOver, null, null, null);
+            if (previousActive != null)
+            {
+                eventBus?.PublishActiveUnitChanged(previousActive, null);
+            }
+
+            if (hasWinningTeam)
+            {
+                eventBus?.PublishCombatEnded(winningTeam);
+            }
+            else
+            {
+                eventBus?.PublishCombatEndedWithoutWinner();
+            }
+
+            LogCombatEnded(hasWinningTeam, winningTeam);
+            ClearCombatOverSelection();
+        }
+
+        private void LogCombatEnded(bool hasWinningTeam, TeamId winningTeam)
+        {
+            var message = hasWinningTeam
+                ? $"{winningTeam} team won combat. CombatOver phase entered; further actions and reactions are disabled."
+                : "Combat ended with no winning team. CombatOver phase entered; further actions and reactions are disabled.";
+            eventBus?.PublishCombatLog(message);
+
+            if (!logCombatStart)
+            {
+                return;
+            }
+
+            Debug.Log($"[Combat Log] {message}", this);
+        }
+
+        private void ClearCombatEndOutcome()
+        {
+            hasCombatEndOutcome = false;
+            combatEndHasWinningTeam = false;
+            combatEndWinningTeam = TeamId.Player;
+        }
+
+        private void ClearCombatOverSelection()
+        {
+            var selectionController = inputRouter != null ? inputRouter.SelectionController : null;
+            if (selectionController != null)
+            {
+                selectionController.ClearForPhaseChange();
+            }
         }
 
         private void ClearIllegalActiveActionSelection()

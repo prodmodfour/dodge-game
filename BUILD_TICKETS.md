@@ -3468,7 +3468,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 118 — Add win/loss state UI
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: show combat win and loss states`
 
