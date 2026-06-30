@@ -22,5 +22,6 @@ MonoBehaviour:
   radius: 0
   damage: 3
   triggersReactions: 1
+  ignoresLineOfSight: 0
   description: Threaten a cardinal cone up to range 4. Units can avoid damage by
     moving out of the declared cone before resolution.

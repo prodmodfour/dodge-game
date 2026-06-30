@@ -1,0 +1,80 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c34c581a1772761ed84baa9b0435d99f, type: 3}
+  m_Name: DefaultSkirmish
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.Scenarios.ScenarioDefinition
+  mapDefinition: {fileID: 11400000, guid: 03ec9753642e65ae1ae636b135833aac, type: 2}
+  unitEntries:
+  - team: 0
+    stats: {fileID: 11400000, guid: 3e54a29dc5e41140fb669fbd74963c6c, type: 2}
+    startingX: 0
+    startingY: 0
+    startingZ: 0
+    abilityLoadout:
+    - {fileID: 11400000, guid: 2336ada0ae510afb6ae603810f683f78, type: 2}
+    - {fileID: 11400000, guid: 1da33b5b8878243bc8a54e6c1f97e0f1, type: 2}
+    - {fileID: 11400000, guid: bff49d3f74f8fb046b598c5d9fbfa301, type: 2}
+    - {fileID: 11400000, guid: be58f07c94a3a7ba7ad9ddf89f2c6f3e, type: 2}
+  - team: 0
+    stats: {fileID: 11400000, guid: fedfc4fb81793d560adf47d56b06e710, type: 2}
+    startingX: 0
+    startingY: 0
+    startingZ: 1
+    abilityLoadout:
+    - {fileID: 11400000, guid: 2336ada0ae510afb6ae603810f683f78, type: 2}
+    - {fileID: 11400000, guid: 97dddb845a892b7bba8643d39d2a68f1, type: 2}
+    - {fileID: 11400000, guid: 1da33b5b8878243bc8a54e6c1f97e0f1, type: 2}
+    - {fileID: 11400000, guid: bff49d3f74f8fb046b598c5d9fbfa301, type: 2}
+    - {fileID: 11400000, guid: be58f07c94a3a7ba7ad9ddf89f2c6f3e, type: 2}
+  - team: 0
+    stats: {fileID: 11400000, guid: 4188459aa220361caae0c90438d7a5e0, type: 2}
+    startingX: 1
+    startingY: 0
+    startingZ: 0
+    abilityLoadout:
+    - {fileID: 11400000, guid: 2336ada0ae510afb6ae603810f683f78, type: 2}
+    - {fileID: 11400000, guid: 3a98bce665ec86118a487d5667e9bd60, type: 2}
+    - {fileID: 11400000, guid: 1da33b5b8878243bc8a54e6c1f97e0f1, type: 2}
+    - {fileID: 11400000, guid: bff49d3f74f8fb046b598c5d9fbfa301, type: 2}
+    - {fileID: 11400000, guid: be58f07c94a3a7ba7ad9ddf89f2c6f3e, type: 2}
+  - team: 1
+    stats: {fileID: 11400000, guid: ed5f548f40c81ec948507c01650e4aa3, type: 2}
+    startingX: 7
+    startingY: 0
+    startingZ: 7
+    abilityLoadout:
+    - {fileID: 11400000, guid: 2336ada0ae510afb6ae603810f683f78, type: 2}
+    - {fileID: 11400000, guid: 1da33b5b8878243bc8a54e6c1f97e0f1, type: 2}
+    - {fileID: 11400000, guid: bff49d3f74f8fb046b598c5d9fbfa301, type: 2}
+    - {fileID: 11400000, guid: be58f07c94a3a7ba7ad9ddf89f2c6f3e, type: 2}
+  - team: 1
+    stats: {fileID: 11400000, guid: eefe2d30ae86942c0bd2dd3aa0c34c47, type: 2}
+    startingX: 7
+    startingY: 0
+    startingZ: 6
+    abilityLoadout:
+    - {fileID: 11400000, guid: 2336ada0ae510afb6ae603810f683f78, type: 2}
+    - {fileID: 11400000, guid: 3a98bce665ec86118a487d5667e9bd60, type: 2}
+    - {fileID: 11400000, guid: 1da33b5b8878243bc8a54e6c1f97e0f1, type: 2}
+    - {fileID: 11400000, guid: bff49d3f74f8fb046b598c5d9fbfa301, type: 2}
+    - {fileID: 11400000, guid: be58f07c94a3a7ba7ad9ddf89f2c6f3e, type: 2}
+  - team: 1
+    stats: {fileID: 11400000, guid: fedfc4fb81793d560adf47d56b06e710, type: 2}
+    startingX: 6
+    startingY: 0
+    startingZ: 7
+    abilityLoadout:
+    - {fileID: 11400000, guid: 2336ada0ae510afb6ae603810f683f78, type: 2}
+    - {fileID: 11400000, guid: 97dddb845a892b7bba8643d39d2a68f1, type: 2}
+    - {fileID: 11400000, guid: 1da33b5b8878243bc8a54e6c1f97e0f1, type: 2}
+    - {fileID: 11400000, guid: bff49d3f74f8fb046b598c5d9fbfa301, type: 2}
+    - {fileID: 11400000, guid: be58f07c94a3a7ba7ad9ddf89f2c6f3e, type: 2}

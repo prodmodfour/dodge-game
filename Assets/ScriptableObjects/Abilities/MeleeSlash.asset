@@ -22,5 +22,6 @@ MonoBehaviour:
   radius: 0
   damage: 4
   triggersReactions: 1
+  ignoresLineOfSight: 0
   description: Declare a melee attack, allow reactions, then deal deterministic damage
     only if the target remains in melee range at resolution.

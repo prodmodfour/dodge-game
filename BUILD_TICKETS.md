@@ -3838,7 +3838,7 @@ unity-ctrl --project "$PWD" test --filter ScenarioDefinitionTests
 
 ## 131 — Add default scenario asset creator
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add default scenario asset creator`
 

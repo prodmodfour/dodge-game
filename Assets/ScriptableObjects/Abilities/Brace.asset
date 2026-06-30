@@ -22,5 +22,6 @@ MonoBehaviour:
   radius: 0
   damage: 0
   triggersReactions: 0
+  ignoresLineOfSight: 0
   description: Spend AP during a reaction turn to reduce the next incoming damage
     from the pending action.

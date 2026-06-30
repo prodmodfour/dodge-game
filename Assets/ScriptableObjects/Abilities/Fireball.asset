@@ -22,5 +22,6 @@ MonoBehaviour:
   radius: 1
   damage: 4
   triggersReactions: 1
+  ignoresLineOfSight: 0
   description: Threaten a radius-1 area within range 5. Units can avoid damage by
     leaving the declared area before resolution.
