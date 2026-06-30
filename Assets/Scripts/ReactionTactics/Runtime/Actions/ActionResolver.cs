@@ -1,21 +1,23 @@
+using System;
 using ReactionTactics.Core;
 using ReactionTactics.Turns;
+using ReactionTactics.Units;
 using UnityEngine;
 
 namespace ReactionTactics.Actions
 {
     /// <summary>
     /// Resolves declared action intents after any reaction window has completed.
-    /// The current shell only records that resolution happened; shape-specific
-    /// damage and positional checks are added through the protected hooks below.
+    /// Shape-specific hooks apply deterministic final-position checks and effects
+    /// before notifying listeners that the original action is complete.
     /// </summary>
     public class ActionResolver
     {
         private readonly CombatEventBus eventBus;
-        private readonly Object logContext;
+        private readonly UnityEngine.Object logContext;
         private readonly bool logResolutions;
 
-        public ActionResolver(CombatEventBus eventBus = null, Object logContext = null, bool logResolutions = true)
+        public ActionResolver(CombatEventBus eventBus = null, UnityEngine.Object logContext = null, bool logResolutions = true)
         {
             this.eventBus = eventBus;
             this.logContext = logContext;
@@ -24,7 +26,8 @@ namespace ReactionTactics.Actions
 
         /// <summary>
         /// Resolves a declared action intent and notifies listeners that the intent is complete.
-        /// Damage, shape re-checks, and avoidance outcomes are intentionally deferred to later tickets.
+        /// Melee resolution uses Option A timing: declared target first, reactions may move units,
+        /// then damage is applied only when the target remains in final melee range.
         /// </summary>
         public TacticalResult Resolve(ActionIntent intent)
         {
@@ -43,7 +46,7 @@ namespace ReactionTactics.Actions
             if (logResolutions)
             {
                 Debug.Log(
-                    $"Resolved action '{intent.Ability.DisplayName}' by {DescribeActor(intent)} using {intent.Ability.Shape} shell resolver.",
+                    $"Resolved action '{intent.Ability.DisplayName}' by {DescribeUnit(intent.Actor)} using {intent.Ability.Shape} resolver.",
                     logContext);
             }
 
@@ -52,8 +55,8 @@ namespace ReactionTactics.Actions
         }
 
         /// <summary>
-        /// Dispatches to shape-specific resolution hooks. Later tickets replace these no-op hooks
-        /// with final-position melee, cone, and radius resolution rules.
+        /// Dispatches to shape-specific resolution hooks. Later tickets replace the remaining no-op hooks
+        /// with final-position cone and radius resolution rules.
         /// </summary>
         protected virtual TacticalResult ResolveByShape(ActionIntent intent)
         {
@@ -86,6 +89,49 @@ namespace ReactionTactics.Actions
 
         protected virtual TacticalResult ResolveMelee(ActionIntent intent)
         {
+            var target = intent.DeclaredTargetUnit;
+            if (target == null)
+            {
+                return TacticalResult.Failure($"Cannot resolve melee action '{intent.Ability.DisplayName}' because it has no declared target unit.");
+            }
+
+            if (!target.IsAlive)
+            {
+                LogMeleeAvoided(intent, target, $"{DescribeUnit(target)} is no longer alive at resolution.");
+                return TacticalResult.Success();
+            }
+
+            var meleeRange = GetMeleeRange(intent.Actor);
+            var finalDistance = intent.Actor.CurrentGridPosition.HorizontalDistanceTo(target.CurrentGridPosition);
+            if (finalDistance > meleeRange)
+            {
+                LogMeleeAvoided(
+                    intent,
+                    target,
+                    $"{DescribeUnit(target)} moved to {target.CurrentGridPosition}, {finalDistance} cells from {DescribeUnit(intent.Actor)} at {intent.Actor.CurrentGridPosition}; melee range is {meleeRange}.");
+                return TacticalResult.Success();
+            }
+
+            var source = CreateDamageSource(intent);
+            var previousHP = target.CurrentHP;
+            var wasAlive = target.IsAlive;
+            var damageResult = target.ApplyDamage(intent.Ability.Damage, source);
+            if (damageResult.IsFailure)
+            {
+                return damageResult;
+            }
+
+            if (target.CurrentHP != previousHP)
+            {
+                eventBus?.PublishHitPointsChanged(target, previousHP, target.CurrentHP, source);
+            }
+
+            if (wasAlive && target.IsDead)
+            {
+                eventBus?.PublishUnitDied(target, source);
+            }
+
+            LogMeleeHit(intent, target, previousHP, target.CurrentHP, meleeRange, finalDistance);
             return TacticalResult.Success();
         }
 
@@ -97,6 +143,48 @@ namespace ReactionTactics.Actions
         protected virtual TacticalResult ResolveRadius(ActionIntent intent)
         {
             return TacticalResult.Success();
+        }
+
+        private static int GetMeleeRange(TacticalUnit actor)
+        {
+            return Math.Max(UnitStatsDefinition.MinimumMeleeRange, actor.MeleeRange);
+        }
+
+        private static DamageSource CreateDamageSource(ActionIntent intent)
+        {
+            return intent.Actor.UnitId.IsAssigned
+                ? DamageSource.FromUnit(intent.Actor.UnitId, intent.Ability.DisplayName)
+                : DamageSource.Environmental(intent.Ability.DisplayName);
+        }
+
+        private void LogMeleeHit(
+            ActionIntent intent,
+            TacticalUnit target,
+            int previousHP,
+            int currentHP,
+            int meleeRange,
+            int finalDistance)
+        {
+            if (!logResolutions)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"Melee action '{intent.Ability.DisplayName}' by {DescribeUnit(intent.Actor)} hit {DescribeUnit(target)} for {previousHP - currentHP} damage at final distance {finalDistance} within melee range {meleeRange}.",
+                logContext);
+        }
+
+        private void LogMeleeAvoided(ActionIntent intent, TacticalUnit target, string reason)
+        {
+            if (!logResolutions)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"Melee action '{intent.Ability.DisplayName}' by {DescribeUnit(intent.Actor)} did not hit {DescribeUnit(target)}: positional avoid — {reason}",
+                logContext);
         }
 
         private static TacticalResult ValidateIntent(ActionIntent intent)
@@ -119,10 +207,14 @@ namespace ReactionTactics.Actions
             return TacticalResult.Success();
         }
 
-        private static string DescribeActor(ActionIntent intent)
+        private static string DescribeUnit(TacticalUnit unit)
         {
-            var actor = intent.Actor;
-            return actor.IsInitialized ? $"{actor.DisplayName} {actor.UnitId}" : actor.DisplayName;
+            if (unit == null)
+            {
+                return "no unit";
+            }
+
+            return unit.IsInitialized ? $"{unit.DisplayName} {unit.UnitId}" : unit.DisplayName;
         }
     }
 }

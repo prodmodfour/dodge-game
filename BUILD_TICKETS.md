@@ -2425,7 +2425,7 @@ unity-ctrl --project "$PWD" test --filter MeleeTargetValidationTests
 
 ## 082 — Implement Option A melee resolution
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: resolve melee after reactions by final range`
 

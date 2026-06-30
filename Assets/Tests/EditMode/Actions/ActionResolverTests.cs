@@ -10,7 +10,7 @@ namespace ReactionTactics.Tests.EditMode.Actions
     public sealed class ActionResolverTests
     {
         [Test]
-        public void ResolvePublishesActionResolvedEventWithoutApplyingDamage()
+        public void ResolvePublishesActionResolvedEventForNonDamagingSelfAction()
         {
             var busObject = new GameObject("Action Resolver Event Bus");
             var actorObject = new GameObject("Action Resolver Actor");
@@ -31,8 +31,8 @@ namespace ReactionTactics.Tests.EditMode.Actions
                     actor,
                     ability,
                     actor.CurrentGridPosition,
-                    ActionTarget.ForUnit(target),
-                    new[] { target.CurrentGridPosition },
+                    ActionTarget.None,
+                    new[] { actor.CurrentGridPosition },
                     declarationRound: 1,
                     declarationSequence: 0);
 
@@ -93,17 +93,17 @@ namespace ReactionTactics.Tests.EditMode.Actions
         {
             var ability = ScriptableObject.CreateInstance<AbilityDefinition>();
             ability.Configure(
-                abilityKey: "melee_slash",
-                displayName: "Melee Slash",
-                apCost: 3,
+                abilityKey: "focus",
+                displayName: "Focus",
+                apCost: 0,
                 usage: AbilityUsage.Action,
-                timing: AbilityTiming.Telegraphed,
-                shape: AbilityShape.Melee,
+                timing: AbilityTiming.Immediate,
+                shape: AbilityShape.Self,
                 range: 0,
                 radius: 0,
-                damage: 4,
-                triggersReactions: true,
-                description: "Shell resolver test ability.");
+                damage: 0,
+                triggersReactions: false,
+                description: "Non-damaging resolver test ability.");
             return ability;
         }
 
