@@ -98,9 +98,14 @@ namespace ReactionTactics.UI
                         ? new[] { context.Target.TargetCell }
                         : Array.Empty<GridPosition>();
                 case AbilityShape.Cone:
-                    // Cone shape service is introduced in a later ticket. Until then, previews
-                    // can still validate targeting and report no affected cells.
-                    return Array.Empty<GridPosition>();
+                    var direction = CardinalDirectionMath.FromTo(
+                        context.Actor.CurrentGridPosition,
+                        context.Target.TargetCell);
+                    return AreaShapeService.GetConeCells(
+                        context.Actor.CurrentGridPosition,
+                        direction,
+                        context.Ability.Range,
+                        context.Map);
                 case AbilityShape.Radius:
                     return AreaShapeService.GetRadiusCells(
                         context.Target.TargetCell,

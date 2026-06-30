@@ -427,6 +427,11 @@ namespace ReactionTactics.Actions
                 return ValidateMeleeRange(context);
             }
 
+            if (context.Ability.Shape == AbilityShape.Cone)
+            {
+                return ValidateConeRange(context);
+            }
+
             var range = GetRangeLimit(context.Actor, context.Ability);
             var distance = context.Actor.CurrentGridPosition.HorizontalDistanceTo(context.Target.TargetCell);
             if (distance <= range)
@@ -458,6 +463,35 @@ namespace ReactionTactics.Actions
 
             return TacticalResult.Failure(
                 $"{DescribeAbility(context.Ability)} requires a hostile target in melee range {range}, but target cell {targetCell} is {distance} cells away from {DescribeUnit(context.Actor)}.");
+        }
+
+        private static TacticalResult ValidateConeRange(AbilityTargetValidationContext context)
+        {
+            var actorPosition = context.Actor.CurrentGridPosition;
+            var targetCell = context.Target.TargetCell;
+            var distance = actorPosition.HorizontalDistanceTo(targetCell);
+            var range = GetRangeLimit(context.Actor, context.Ability);
+
+            if (distance == 0)
+            {
+                return TacticalResult.Failure(
+                    $"{DescribeAbility(context.Ability)} requires a target cell away from {DescribeUnit(context.Actor)} to choose a cone direction.");
+            }
+
+            var resolvedDirection = CardinalDirectionMath.FromTo(actorPosition, targetCell);
+            if (context.Target.HasDirection && context.Target.Direction != resolvedDirection)
+            {
+                return TacticalResult.Failure(
+                    $"{DescribeAbility(context.Ability)} target cell {targetCell} resolves to {resolvedDirection} from {DescribeUnit(context.Actor)} at {actorPosition}, not {context.Target.Direction}.");
+            }
+
+            if (distance <= range)
+            {
+                return TacticalResult.Success();
+            }
+
+            return TacticalResult.Failure(
+                $"{DescribeAbility(context.Ability)} target cell {targetCell} is {distance} cells away from {DescribeUnit(context.Actor)}, beyond range {range}.");
         }
 
         private static AbilityTargetRelationship ResolveTargetRelationship(AbilityTargetValidationContext context)

@@ -160,22 +160,9 @@ namespace ReactionTactics.Actions
 
         private TacticalResult ValidateConeTarget()
         {
-            if (!HasTargetCell && !HasDirection)
-            {
-                return TacticalResult.Failure("Cone abilities require a target cell and direction.");
-            }
-
-            if (!HasTargetCell)
-            {
-                return TacticalResult.Failure("Cone abilities require a target cell.");
-            }
-
-            if (!HasDirection)
-            {
-                return TacticalResult.Failure("Cone abilities require a direction.");
-            }
-
-            return TacticalResult.Success();
+            return HasTargetCell
+                ? TacticalResult.Success()
+                : TacticalResult.Failure("Cone abilities require a target cell.");
         }
 
         private static void ValidateDirection(CardinalDirection direction)

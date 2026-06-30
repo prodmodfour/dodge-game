@@ -2600,7 +2600,7 @@ unity-ctrl --project "$PWD" test --filter ConeShapeTests
 
 ## 088 — Implement cone targeting validation
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: validate cone attack targets`
 

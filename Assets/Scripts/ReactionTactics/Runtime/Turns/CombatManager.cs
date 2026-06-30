@@ -748,6 +748,16 @@ namespace ReactionTactics.Turns
                 case AbilityShape.SingleTarget:
                 case AbilityShape.Melee:
                     return target.HasTargetCell ? new[] { target.TargetCell } : new GridPosition[0];
+                case AbilityShape.Cone:
+                    if (!target.HasTargetCell || map == null)
+                    {
+                        return new GridPosition[0];
+                    }
+
+                    var direction = target.HasDirection
+                        ? target.Direction
+                        : CardinalDirectionMath.FromTo(actor.CurrentGridPosition, target.TargetCell);
+                    return ToArray(AreaShapeService.GetConeCells(actor.CurrentGridPosition, direction, ability.Range, map));
                 case AbilityShape.Radius:
                     if (!target.HasTargetCell || map == null)
                     {

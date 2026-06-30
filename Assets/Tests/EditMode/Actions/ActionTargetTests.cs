@@ -93,16 +93,14 @@ namespace ReactionTactics.Tests.EditMode.Actions
         }
 
         [Test]
-        public void ConeTargetRequiresCellAndDirection()
+        public void ConeTargetRequiresCellAndCanCarryOptionalDirection()
         {
             var cell = new GridPosition(5, 0, 3);
             var cellOnlyTarget = ActionTarget.ForCell(cell);
             var coneTarget = ActionTarget.ForCellAndDirection(cell, CardinalDirection.East);
 
-            var cellOnlyResult = cellOnlyTarget.ValidateForShape(AbilityShape.Cone);
-
-            Assert.That(cellOnlyResult.IsFailure, Is.True);
-            Assert.That(cellOnlyResult.ErrorMessage, Does.Contain("direction"));
+            Assert.That(cellOnlyTarget.ValidateForShape(AbilityShape.Cone).IsSuccess, Is.True);
+            Assert.That(cellOnlyTarget.HasDirection, Is.False);
             Assert.That(coneTarget.HasTargetCell, Is.True);
             Assert.That(coneTarget.TargetCell, Is.EqualTo(cell));
             Assert.That(coneTarget.HasDirection, Is.True);
@@ -134,7 +132,6 @@ namespace ReactionTactics.Tests.EditMode.Actions
             Assert.That(noTarget.ValidateForShape(AbilityShape.Melee).ErrorMessage, Does.Contain("target unit"));
             Assert.That(noTarget.ValidateForShape(AbilityShape.Radius).ErrorMessage, Does.Contain("target cell"));
             Assert.That(noTarget.ValidateForShape(AbilityShape.Cone).ErrorMessage, Does.Contain("target cell"));
-            Assert.That(noTarget.ValidateForShape(AbilityShape.Cone).ErrorMessage, Does.Contain("direction"));
             Assert.That(cellTarget.ValidateForShape(AbilityShape.SingleTarget).IsFailure, Is.True);
         }
 
