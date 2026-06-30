@@ -1485,7 +1485,7 @@ unity-ctrl --project "$PWD" menu "File/Save"
 
 ## 050 — Add unit model tests
 
-Status: TODO
+Status: DONE
 
 **Commit:** `test: cover unit ap hp and registry behavior`
 
