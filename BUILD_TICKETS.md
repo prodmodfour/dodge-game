@@ -3563,7 +3563,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 121 — Implement AI target selection
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: select nearest hostile target for ai`
 
