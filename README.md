@@ -79,7 +79,7 @@ Autonomous Unity work should follow the project brief, `CLAUDE.md`, and the Unit
 7. update only the selected ticket status
 8. commit exactly one completed ticket
 
-Scenario-driven scene bootstrapping uses `unity-ctrl --project "$PWD" rt_create_default_scenario` followed by `unity-ctrl --project "$PWD" rt_setup_scenario_scene`. The setup leaves `Units/Scenario Units` empty in edit mode; `ScenarioLoader` spawns `DefaultSkirmish.asset` once when play mode starts.
+Scenario-driven scene bootstrapping can be rebuilt with one command: `unity-ctrl --project "$PWD" rt_setup_prototype_scene`. The setup creates or updates the default map, units, abilities, scenario asset, grid/input/UI wiring, and scenario loader. It leaves `Units/Scenario Units` empty in edit mode; `ScenarioLoader` spawns `DefaultSkirmish.asset` once when play mode starts.
 
 Structural scene, prefab, and asset wiring should use `unity-ctrl exec` or project-specific `[UnityCliTool]` commands. Raw Unity YAML edits are for simple serialized value changes only and must be followed by `unity-ctrl --project "$PWD" reserialize <path>`.
 

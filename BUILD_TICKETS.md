@@ -3928,7 +3928,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 134 — Add all-in-one prototype scene setup tool
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add all in one prototype setup tool`
 
