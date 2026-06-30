@@ -2332,7 +2332,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 079 — Wire action declaration into combat manager
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: wire declared actions into combat loop`
 

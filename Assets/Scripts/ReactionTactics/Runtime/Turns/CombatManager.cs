@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ReactionTactics.Actions;
 using ReactionTactics.Core;
 using ReactionTactics.Grid;
 using ReactionTactics.Input;
@@ -9,8 +10,9 @@ namespace ReactionTactics.Turns
 {
     /// <summary>
     /// Scene-level shell for the high-level combat loop. It starts combat, refreshes
-    /// round AP, advances active turns, and listens for routed end-turn requests;
-    /// actions, reactions, and win/loss checks are added by later tickets.
+    /// round AP, advances active turns, listens for routed commands, and sends
+    /// declared active actions through the shell resolver; reactions and win/loss
+    /// checks are added by later tickets.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class CombatManager : MonoBehaviour
@@ -39,9 +41,14 @@ namespace ReactionTactics.Turns
         [Tooltip("Write concise round-start and active-unit logs while the prototype combat loop advances.")]
         private bool logCombatStart = true;
 
+        [SerializeField]
+        [Tooltip("Write concise declaration and resolution logs while actions pass through the shell resolver.")]
+        private bool logActionFlow = true;
+
         private readonly CombatState currentState = new CombatState();
         private readonly TurnOrderService turnOrderService = new TurnOrderService();
         private readonly RoundLifecycleService roundLifecycleService = new RoundLifecycleService();
+        private readonly ActionDeclarationService actionDeclarationService = new ActionDeclarationService();
         private PlayerCommandRouter subscribedInputRouter;
 
         public CombatState CurrentState
@@ -84,6 +91,12 @@ namespace ReactionTactics.Turns
         {
             get { return logCombatStart; }
             set { logCombatStart = value; }
+        }
+
+        public bool LogActionFlow
+        {
+            get { return logActionFlow; }
+            set { logActionFlow = value; }
         }
 
         /// <summary>
@@ -271,6 +284,7 @@ namespace ReactionTactics.Turns
         {
             startCombatOnStart = true;
             logCombatStart = true;
+            logActionFlow = true;
             ResolveSceneReferences();
         }
 
@@ -378,15 +392,102 @@ namespace ReactionTactics.Turns
             }
 
             var actionResult = ValidateUnitCanTakeAction(request.Unit);
-            if (actionResult.IsSuccess)
+            if (actionResult.IsFailure)
+            {
+                ClearIllegalActiveActionSelection();
+                Debug.LogWarning(
+                    $"{nameof(CombatManager)} rejected active action command {request.CommandType}: {actionResult.ErrorMessage}",
+                    this);
+                return;
+            }
+
+            if (request.CommandType != PlayerCommandType.ConfirmTarget || !IsDeclarableActionMode(request.ActionMode))
             {
                 return;
             }
 
-            ClearIllegalActiveActionSelection();
-            Debug.LogWarning(
-                $"{nameof(CombatManager)} rejected active action command {request.CommandType}: {actionResult.ErrorMessage}",
-                this);
+            var declarationResult = DeclareAndResolveSelectedAction(request);
+            if (declarationResult.IsFailure)
+            {
+                Debug.LogWarning(
+                    $"{nameof(CombatManager)} could not declare action command {request.ActionMode}: {declarationResult.ErrorMessage}",
+                    this);
+            }
+        }
+
+        /// <summary>
+        /// Declares the selected active ability from a routed target-confirmation request,
+        /// stores the intent while it resolves, and returns control to the same active unit.
+        /// Reaction windows are intentionally skipped until the reaction milestone.
+        /// </summary>
+        public TacticalResult DeclareAndResolveSelectedAction(PlayerCommandRequest request)
+        {
+            if (request.CommandType != PlayerCommandType.ConfirmTarget)
+            {
+                return TacticalResult.Failure($"Cannot declare an action from command {request.CommandType}; a confirmed target is required.");
+            }
+
+            if (!IsDeclarableActionMode(request.ActionMode))
+            {
+                return TacticalResult.Failure($"Selection mode {request.ActionMode} does not declare an active ability action yet.");
+            }
+
+            var legalityResult = ValidateUnitCanTakeAction(request.Unit);
+            if (legalityResult.IsFailure)
+            {
+                return legalityResult;
+            }
+
+            var abilityResult = ResolveSelectedActionAbility(request.Unit, request.ActionMode);
+            if (abilityResult.IsFailure)
+            {
+                return TacticalResult.Failure(abilityResult.ErrorMessage);
+            }
+
+            var ability = abilityResult.Value;
+            var targetResult = CreateActionTarget(request.Unit, ability, request.Target);
+            if (targetResult.IsFailure)
+            {
+                return TacticalResult.Failure(targetResult.ErrorMessage);
+            }
+
+            var mapResult = ResolveCurrentMap();
+            if (mapResult.IsFailure)
+            {
+                return TacticalResult.Failure(mapResult.ErrorMessage);
+            }
+
+            var target = targetResult.Value;
+            var previousAP = request.Unit.CurrentAP;
+            var declaredAffectedCells = CreateDeclaredAffectedCells(request.Unit, ability, target);
+            var intentResult = actionDeclarationService.DeclareAction(
+                request.Unit,
+                ability,
+                target,
+                currentState,
+                mapResult.Value,
+                declaredAffectedCells);
+
+            if (intentResult.IsFailure)
+            {
+                return TacticalResult.Failure(intentResult.ErrorMessage);
+            }
+
+            var intent = intentResult.Value;
+            currentState.SetState(currentState.CurrentRound, CombatPhase.ResolvingAction, request.Unit, null, intent);
+            PublishActionDeclarationEvents(intent, previousAP);
+            LogActionDeclared(intent, previousAP);
+
+            var resolver = new ActionResolver(eventBus, this, logActionFlow);
+            var resolveResult = resolver.Resolve(intent);
+            if (resolveResult.IsFailure)
+            {
+                return resolveResult;
+            }
+
+            currentState.SetState(currentState.CurrentRound, CombatPhase.ActiveTurn, request.Unit, null, null);
+            ClearResolvedActionSelection();
+            return TacticalResult.Success();
         }
 
         private void SubscribeToInputRouter()
@@ -442,12 +543,212 @@ namespace ReactionTactics.Turns
             }
         }
 
+        private TacticalResult<AbilityDefinition> ResolveSelectedActionAbility(TacticalUnit unit, SelectionActionMode actionMode)
+        {
+            if (unit == null)
+            {
+                return TacticalResult<AbilityDefinition>.Failure("Cannot resolve an action ability because no unit was selected.");
+            }
+
+            if (!TryGetAbilityShapeForActionMode(actionMode, out var requiredShape))
+            {
+                return TacticalResult<AbilityDefinition>.Failure($"Selection mode {actionMode} does not map to a declarable ability shape.");
+            }
+
+            var loadout = unit.GetComponent<UnitAbilityLoadout>();
+            if (loadout == null)
+            {
+                return TacticalResult<AbilityDefinition>.Failure($"{DescribeUnit(unit)} has no ability loadout for {actionMode}.");
+            }
+
+            var actionAbilities = loadout.GetActionAbilities();
+            for (var i = 0; i < actionAbilities.Count; i += 1)
+            {
+                var ability = actionAbilities[i];
+                if (ability != null && ability.Shape == requiredShape)
+                {
+                    return TacticalResult<AbilityDefinition>.Success(ability);
+                }
+            }
+
+            return TacticalResult<AbilityDefinition>.Failure($"{DescribeUnit(unit)} has no active {actionMode} ability assigned.");
+        }
+
+        private TacticalResult<IGridMap> ResolveCurrentMap()
+        {
+            if (gridManager == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot declare an action because {nameof(GridManager)} is missing.");
+            }
+
+            if (!gridManager.HasCurrentMap && !gridManager.RebuildMap())
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot declare an action because {nameof(GridManager)} could not build a current map.");
+            }
+
+            if (gridManager.CurrentMap == null)
+            {
+                return TacticalResult<IGridMap>.Failure($"Cannot declare an action because {nameof(GridManager)} has no current map.");
+            }
+
+            return TacticalResult<IGridMap>.Success(gridManager.CurrentMap);
+        }
+
+        private void PublishActionDeclarationEvents(ActionIntent intent, int previousAP)
+        {
+            if (intent.Actor.CurrentAP != previousAP)
+            {
+                eventBus?.PublishActionPointsChanged(intent.Actor, previousAP, intent.Actor.CurrentAP);
+            }
+
+            eventBus?.PublishActionDeclared(intent.Actor, intent);
+        }
+
+        private void LogActionDeclared(ActionIntent intent, int previousAP)
+        {
+            if (!logActionFlow)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"Declared action '{intent.Ability.DisplayName}' by {DescribeUnit(intent.Actor)} targeting {intent.Target}; AP {previousAP}->{intent.Actor.CurrentAP}.",
+                this);
+        }
+
+        private void ClearResolvedActionSelection()
+        {
+            var selectionController = inputRouter != null ? inputRouter.SelectionController : null;
+            if (selectionController == null)
+            {
+                return;
+            }
+
+            selectionController.ClearActionMode();
+        }
+
         private static bool IsActiveActionMode(SelectionActionMode actionMode)
         {
             return actionMode == SelectionActionMode.Move
                 || actionMode == SelectionActionMode.Melee
                 || actionMode == SelectionActionMode.Cone
                 || actionMode == SelectionActionMode.AreaOfEffect;
+        }
+
+        private static bool IsDeclarableActionMode(SelectionActionMode actionMode)
+        {
+            return actionMode == SelectionActionMode.Melee
+                || actionMode == SelectionActionMode.Cone
+                || actionMode == SelectionActionMode.AreaOfEffect;
+        }
+
+        private static bool TryGetAbilityShapeForActionMode(SelectionActionMode actionMode, out AbilityShape shape)
+        {
+            switch (actionMode)
+            {
+                case SelectionActionMode.Melee:
+                    shape = AbilityShape.Melee;
+                    return true;
+                case SelectionActionMode.Cone:
+                    shape = AbilityShape.Cone;
+                    return true;
+                case SelectionActionMode.AreaOfEffect:
+                    shape = AbilityShape.Radius;
+                    return true;
+                default:
+                    shape = default;
+                    return false;
+            }
+        }
+
+        private static TacticalResult<ActionTarget> CreateActionTarget(
+            TacticalUnit actor,
+            AbilityDefinition ability,
+            SelectionTarget selectedTarget)
+        {
+            if (actor == null)
+            {
+                return TacticalResult<ActionTarget>.Failure("Cannot create an action target because no acting unit was provided.");
+            }
+
+            if (ability == null)
+            {
+                return TacticalResult<ActionTarget>.Failure("Cannot create an action target because no ability was selected.");
+            }
+
+            ActionTarget actionTarget;
+            if (ability.Shape == AbilityShape.Self)
+            {
+                actionTarget = ActionTarget.None;
+            }
+            else
+            {
+                var targetResult = CreateNonSelfActionTarget(selectedTarget);
+                if (targetResult.IsFailure)
+                {
+                    return targetResult;
+                }
+
+                actionTarget = targetResult.Value;
+            }
+
+            if (ability.Shape != AbilityShape.Cone)
+            {
+                return TacticalResult<ActionTarget>.Success(actionTarget);
+            }
+
+            if (!actionTarget.HasTargetCell)
+            {
+                return TacticalResult<ActionTarget>.Failure($"{ability.DisplayName} requires a target cell to choose a cone direction.");
+            }
+
+            if (actionTarget.TargetCell == actor.CurrentGridPosition)
+            {
+                return TacticalResult<ActionTarget>.Failure($"{ability.DisplayName} requires a target cell away from {DescribeUnit(actor)} to choose a cone direction.");
+            }
+
+            var direction = CardinalDirectionMath.FromTo(actor.CurrentGridPosition, actionTarget.TargetCell);
+            return TacticalResult<ActionTarget>.Success(actionTarget.WithDirection(direction));
+        }
+
+        private static TacticalResult<ActionTarget> CreateNonSelfActionTarget(SelectionTarget selectedTarget)
+        {
+            if (!selectedTarget.HasTarget)
+            {
+                return TacticalResult<ActionTarget>.Failure("Cannot declare an action without a confirmed target.");
+            }
+
+            switch (selectedTarget.Kind)
+            {
+                case SelectionTargetKind.Cell:
+                    return TacticalResult<ActionTarget>.Success(ActionTarget.ForCell(selectedTarget.Cell));
+                case SelectionTargetKind.Unit:
+                    if (selectedTarget.Unit == null)
+                    {
+                        return TacticalResult<ActionTarget>.Failure("Cannot declare an action against a missing target unit.");
+                    }
+
+                    return TacticalResult<ActionTarget>.Success(ActionTarget.ForUnit(selectedTarget.Unit));
+                default:
+                    return TacticalResult<ActionTarget>.Failure("Cannot declare an action without a cell or unit target.");
+            }
+        }
+
+        private static GridPosition[] CreateDeclaredAffectedCells(
+            TacticalUnit actor,
+            AbilityDefinition ability,
+            ActionTarget target)
+        {
+            switch (ability.Shape)
+            {
+                case AbilityShape.Self:
+                    return new[] { target.HasTargetCell ? target.TargetCell : actor.CurrentGridPosition };
+                case AbilityShape.SingleTarget:
+                case AbilityShape.Melee:
+                    return target.HasTargetCell ? new[] { target.TargetCell } : new GridPosition[0];
+                default:
+                    return new GridPosition[0];
+            }
         }
 
         private static string DescribeUnit(TacticalUnit unit)
