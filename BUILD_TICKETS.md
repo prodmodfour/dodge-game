@@ -1720,7 +1720,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 058 — Add input scene setup tool
 
-Status: TODO
+Status: DONE
 
 **Commit:** `tooling: add input scene setup tool`
 
