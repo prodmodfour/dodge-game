@@ -1,4 +1,5 @@
 using System;
+using ReactionTactics.Actions;
 using ReactionTactics.Units;
 using UnityEngine;
 
@@ -19,6 +20,8 @@ namespace ReactionTactics.Turns
         public event Action<ActionPointsChangedEvent> ActionPointsChanged;
 
         public event Action<HitPointsChangedEvent> HitPointsChanged;
+
+        public event Action<DamageEvent> DamageApplied;
 
         public event Action<ActionDeclaredEvent> ActionDeclared;
 
@@ -52,6 +55,18 @@ namespace ReactionTactics.Turns
         {
             var eventData = new HitPointsChangedEvent(unit, previousHP, currentHP, source);
             HitPointsChanged?.Invoke(eventData);
+        }
+
+        public void PublishDamageApplied(
+            ActionIntent sourceIntent,
+            TacticalUnit attacker,
+            TacticalUnit target,
+            int amount,
+            bool wasBraced,
+            int finalAmount)
+        {
+            var eventData = new DamageEvent(sourceIntent, attacker, target, amount, wasBraced, finalAmount);
+            DamageApplied?.Invoke(eventData);
         }
 
         public void PublishActionDeclared(TacticalUnit actor, object actionIntent)

@@ -1,6 +1,7 @@
 using System;
-using static ReactionTactics.Turns.CombatEventPayloadValidation;
+using ReactionTactics.Actions;
 using ReactionTactics.Units;
+using static ReactionTactics.Turns.CombatEventPayloadValidation;
 
 namespace ReactionTactics.Turns
 {
@@ -103,6 +104,48 @@ namespace ReactionTactics.Turns
         }
 
         public DamageSource Source { get; }
+    }
+
+    /// <summary>
+    /// Event raised when deterministic action resolution applies damage to a target.
+    /// It records the action context and damage amounts only; hit chance, accuracy rolls,
+    /// dodge rolls, and other random avoidance fields are intentionally absent.
+    /// </summary>
+    public readonly struct DamageEvent
+    {
+        public DamageEvent(
+            ActionIntent sourceIntent,
+            TacticalUnit attacker,
+            TacticalUnit target,
+            int amount,
+            bool wasBraced,
+            int finalAmount)
+        {
+            RequireActionIntent(sourceIntent, nameof(sourceIntent));
+            RequireUnit(attacker, nameof(attacker));
+            RequireUnit(target, nameof(target));
+            RequireNonNegative(amount, nameof(amount));
+            RequireNonNegative(finalAmount, nameof(finalAmount));
+
+            SourceIntent = sourceIntent;
+            Attacker = attacker;
+            Target = target;
+            Amount = amount;
+            WasBraced = wasBraced;
+            FinalAmount = finalAmount;
+        }
+
+        public ActionIntent SourceIntent { get; }
+
+        public TacticalUnit Attacker { get; }
+
+        public TacticalUnit Target { get; }
+
+        public int Amount { get; }
+
+        public bool WasBraced { get; }
+
+        public int FinalAmount { get; }
     }
 
     /// <summary>

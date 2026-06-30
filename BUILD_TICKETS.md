@@ -2712,7 +2712,7 @@ unity-ctrl --project "$PWD" test --filter RangedLineOfSightValidationTests
 
 ## 092 — Add deterministic damage event data
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add deterministic damage event data`
 

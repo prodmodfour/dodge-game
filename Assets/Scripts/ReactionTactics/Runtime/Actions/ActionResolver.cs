@@ -127,21 +127,10 @@ namespace ReactionTactics.Actions
             PresentMeleeResolution(intent, target);
             var source = CreateDamageSource(intent);
             var previousHP = target.CurrentHP;
-            var wasAlive = target.IsAlive;
-            var damageResult = target.ApplyDamage(intent.Ability.Damage, source);
+            var damageResult = ApplyDamageAndPublishEvents(target, intent.Ability.Damage, source, intent);
             if (damageResult.IsFailure)
             {
                 return damageResult;
-            }
-
-            if (target.CurrentHP != previousHP)
-            {
-                eventBus?.PublishHitPointsChanged(target, previousHP, target.CurrentHP, source);
-            }
-
-            if (wasAlive && target.IsDead)
-            {
-                eventBus?.PublishUnitDied(target, source);
             }
 
             LogMeleeHit(intent, target, previousHP, target.CurrentHP, meleeRange, finalDistance);
@@ -190,7 +179,7 @@ namespace ReactionTactics.Actions
                     continue;
                 }
 
-                var damageResult = ApplyDamageAndPublishEvents(unit, intent.Ability.Damage, source);
+                var damageResult = ApplyDamageAndPublishEvents(unit, intent.Ability.Damage, source, intent);
                 if (damageResult.IsFailure)
                 {
                     return damageResult;
@@ -231,7 +220,7 @@ namespace ReactionTactics.Actions
                     continue;
                 }
 
-                var damageResult = ApplyDamageAndPublishEvents(unit, intent.Ability.Damage, source);
+                var damageResult = ApplyDamageAndPublishEvents(unit, intent.Ability.Damage, source, intent);
                 if (damageResult.IsFailure)
                 {
                     return damageResult;
@@ -255,15 +244,18 @@ namespace ReactionTactics.Actions
                 : TurnOrderService.BuildTurnOrder(combatants);
         }
 
-        private TacticalResult ApplyDamageAndPublishEvents(TacticalUnit target, int amount, DamageSource source)
+        private TacticalResult ApplyDamageAndPublishEvents(TacticalUnit target, int amount, DamageSource source, ActionIntent intent)
         {
+            var finalAmount = amount;
             var previousHP = target.CurrentHP;
             var wasAlive = target.IsAlive;
-            var damageResult = target.ApplyDamage(amount, source);
+            var damageResult = target.ApplyDamage(finalAmount, source);
             if (damageResult.IsFailure)
             {
                 return damageResult;
             }
+
+            eventBus?.PublishDamageApplied(intent, intent.Actor, target, amount, wasBraced: false, finalAmount: finalAmount);
 
             if (target.CurrentHP != previousHP)
             {
