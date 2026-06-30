@@ -4431,7 +4431,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 151 — Build Linux prototype player
 
-Status: TODO
+Status: DONE
 
 **Commit:** `build: produce linux prototype build`
 
