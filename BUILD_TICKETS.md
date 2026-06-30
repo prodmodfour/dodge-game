@@ -2827,7 +2827,7 @@ unity-ctrl --project "$PWD" test --filter ReactionOrderServiceTests
 
 ## 096 — Add reaction eligibility validation
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: validate reaction eligibility`
 
