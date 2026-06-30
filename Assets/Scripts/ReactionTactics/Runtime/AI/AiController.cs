@@ -124,6 +124,7 @@ namespace ReactionTactics.AI
     {
         public const int DefaultTargetSelectionVerticalWeight = 1;
         public const int DefaultReactionApReserve = 2;
+        public const float DefaultDecisionDelaySeconds = 0.35f;
         public const string DefaultMeleeSlashAbilityKey = "melee_slash";
         public const string DefaultMeleeSlashDisplayName = "Melee Slash";
         public const string DefaultConeShotAbilityKey = "cone_shot";
@@ -142,6 +143,15 @@ namespace ReactionTactics.AI
         [SerializeField]
         [Tooltip("Optional CombatManager controlled by this AI. Defaults to the manager on the same GameObject.")]
         private CombatManager combatManager;
+
+        [SerializeField]
+        [Min(0f)]
+        [Tooltip("Seconds to wait in play mode before this AI confirms an automatic active-turn or reaction decision. Set to 0 to disable pacing.")]
+        private float decisionDelaySeconds = DefaultDecisionDelaySeconds;
+
+        [SerializeField]
+        [Tooltip("Skip the automatic AI pacing delay. Useful for PlayMode tests and scripted validation.")]
+        private bool skipDecisionPacing;
 
         [SerializeField]
         [Tooltip("Write concise debug logs for AI movement and pass decisions.")]
@@ -173,6 +183,40 @@ namespace ReactionTactics.AI
         {
             get { return combatManager; }
             set { combatManager = value; }
+        }
+
+        public float DecisionDelaySeconds
+        {
+            get { return decisionDelaySeconds; }
+            set
+            {
+                if (value < 0f)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(value),
+                        value,
+                        "AI decision delay cannot be negative.");
+                }
+
+                decisionDelaySeconds = value;
+            }
+        }
+
+        public bool SkipDecisionPacing
+        {
+            get { return skipDecisionPacing; }
+            set { skipDecisionPacing = value; }
+        }
+
+        public bool ShouldUseDecisionPacing
+        {
+            get
+            {
+                return decisionDelaySeconds > 0f
+                    && !skipDecisionPacing
+                    && Application.isPlaying
+                    && !Application.isBatchMode;
+            }
         }
 
         public bool LogDecisions
@@ -984,6 +1028,8 @@ namespace ReactionTactics.AI
         {
             controlledTeam = TeamId.Enemy;
             automaticDelegationEnabled = true;
+            decisionDelaySeconds = DefaultDecisionDelaySeconds;
+            skipDecisionPacing = false;
             logDecisions = true;
             targetSelectionVerticalWeight = DefaultTargetSelectionVerticalWeight;
             reactionApReserve = DefaultReactionApReserve;
@@ -994,6 +1040,7 @@ namespace ReactionTactics.AI
         {
             targetSelectionVerticalWeight = Math.Max(0, targetSelectionVerticalWeight);
             reactionApReserve = Math.Max(0, reactionApReserve);
+            decisionDelaySeconds = Mathf.Max(0f, decisionDelaySeconds);
         }
 
         private CombatManager ResolveCombatManager()

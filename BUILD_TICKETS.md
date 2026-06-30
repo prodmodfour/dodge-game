@@ -3752,7 +3752,7 @@ unity-ctrl --project "$PWD" test --filter AiBraceReactionTests
 
 ## 128 — Add AI pacing delay
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: add small ai action pacing delay`
 

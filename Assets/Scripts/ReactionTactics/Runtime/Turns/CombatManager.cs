@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using ReactionTactics.AI;
 using ReactionTactics.Actions;
@@ -64,6 +65,10 @@ namespace ReactionTactics.Turns
         private ReactionWindow currentReactionWindow;
         private readonly HashSet<TacticalUnit> deathSubscribedUnits = new HashSet<TacticalUnit>();
         private bool isDelegatingAiActiveTurns;
+        private bool isWaitingForAiActiveTurn;
+        private bool isWaitingForAiReactionTurn;
+        private Coroutine pendingAiActiveTurnCoroutine;
+        private Coroutine pendingAiReactionTurnCoroutine;
         private bool hasCombatEndOutcome;
         private bool combatEndHasWinningTeam;
         private TeamId combatEndWinningTeam = TeamId.Player;
@@ -600,6 +605,7 @@ namespace ReactionTactics.Turns
         {
             UnsubscribeFromInputRouter();
             UnsubscribeFromRegisteredUnitDeaths();
+            StopPendingAiPacingCoroutines();
         }
 
         private void Start()
@@ -710,6 +716,11 @@ namespace ReactionTactics.Turns
                 return TacticalResult.Success();
             }
 
+            if (TryStartPacedAiActiveTurn(controller))
+            {
+                return TacticalResult.Success();
+            }
+
             isDelegatingAiActiveTurns = true;
             try
             {
@@ -753,6 +764,45 @@ namespace ReactionTactics.Turns
             }
         }
 
+        private TacticalResult ExecuteSingleAiActiveTurn(AiController controller)
+        {
+            if (controller == null || !controller.ShouldHandleActiveTurn(this))
+            {
+                return TacticalResult.Success();
+            }
+
+            if (isDelegatingAiActiveTurns)
+            {
+                return TacticalResult.Success();
+            }
+
+            isDelegatingAiActiveTurns = true;
+            try
+            {
+                var activeBefore = currentState.ActiveUnit;
+                var roundBefore = currentState.CurrentRound;
+                var result = controller.TakeActiveTurn(this);
+                if (result.IsFailure)
+                {
+                    return result;
+                }
+
+                if (ReferenceEquals(activeBefore, currentState.ActiveUnit)
+                    && roundBefore == currentState.CurrentRound
+                    && currentState.IsActiveUnitPhase)
+                {
+                    return TacticalResult.Failure(
+                        $"AI active-turn delegation for {DescribeUnit(activeBefore)} did not advance combat state.");
+                }
+
+                return TacticalResult.Success();
+            }
+            finally
+            {
+                isDelegatingAiActiveTurns = false;
+            }
+        }
+
         private bool TryDelegateReactionTurnToAi(
             ActionIntent intent,
             TacticalUnit reactor,
@@ -765,8 +815,135 @@ namespace ReactionTactics.Turns
                 return false;
             }
 
+            if (TryStartPacedAiReactionTurn(controller, intent, reactor))
+            {
+                result = TacticalResult.Success();
+                return true;
+            }
+
             result = controller.TakeReactionTurn(this, intent, reactor);
             return true;
+        }
+
+        private bool TryStartPacedAiActiveTurn(AiController controller)
+        {
+            if (controller == null || !controller.ShouldUseDecisionPacing)
+            {
+                return false;
+            }
+
+            if (isWaitingForAiActiveTurn || pendingAiActiveTurnCoroutine != null)
+            {
+                return true;
+            }
+
+            isWaitingForAiActiveTurn = true;
+            pendingAiActiveTurnCoroutine = StartCoroutine(DelayThenTakeAiActiveTurn(
+                controller,
+                currentState.ActiveUnit,
+                currentState.CurrentRound));
+            return true;
+        }
+
+        private bool TryStartPacedAiReactionTurn(
+            AiController controller,
+            ActionIntent intent,
+            TacticalUnit reactor)
+        {
+            if (controller == null || !controller.ShouldUseDecisionPacing)
+            {
+                return false;
+            }
+
+            if (isWaitingForAiReactionTurn || pendingAiReactionTurnCoroutine != null)
+            {
+                return true;
+            }
+
+            isWaitingForAiReactionTurn = true;
+            pendingAiReactionTurnCoroutine = StartCoroutine(DelayThenTakeAiReactionTurn(
+                controller,
+                intent,
+                reactor,
+                currentState.CurrentRound));
+            return true;
+        }
+
+        private IEnumerator DelayThenTakeAiActiveTurn(
+            AiController controller,
+            TacticalUnit expectedActiveUnit,
+            int expectedRound)
+        {
+            var delaySeconds = controller != null ? controller.DecisionDelaySeconds : 0f;
+            if (delaySeconds > 0f)
+            {
+                yield return new WaitForSecondsRealtime(delaySeconds);
+            }
+
+            pendingAiActiveTurnCoroutine = null;
+            isWaitingForAiActiveTurn = false;
+
+            if (controller == null
+                || currentState.CurrentRound != expectedRound
+                || !ReferenceEquals(currentState.ActiveUnit, expectedActiveUnit)
+                || !controller.ShouldHandleActiveTurn(this))
+            {
+                yield break;
+            }
+
+            var result = ExecuteSingleAiActiveTurn(controller);
+            LogAiDelegationFailure(result, "active turn");
+            if (result.IsSuccess && !currentState.IsCombatOver)
+            {
+                LogAiDelegationFailure(DelegateActiveTurnToAiIfNeeded(), "active turn");
+            }
+        }
+
+        private IEnumerator DelayThenTakeAiReactionTurn(
+            AiController controller,
+            ActionIntent expectedIntent,
+            TacticalUnit expectedReactor,
+            int expectedRound)
+        {
+            var delaySeconds = controller != null ? controller.DecisionDelaySeconds : 0f;
+            if (delaySeconds > 0f)
+            {
+                yield return new WaitForSecondsRealtime(delaySeconds);
+            }
+
+            pendingAiReactionTurnCoroutine = null;
+            isWaitingForAiReactionTurn = false;
+
+            if (controller == null
+                || currentState.CurrentRound != expectedRound
+                || !ReferenceEquals(currentState.PendingActionIntent, expectedIntent)
+                || !ReferenceEquals(currentState.ReactingUnit, expectedReactor)
+                || !controller.ShouldHandleReactionTurn(this, expectedIntent, expectedReactor))
+            {
+                yield break;
+            }
+
+            LogAiDelegationFailure(
+                controller.TakeReactionTurn(this, expectedIntent, expectedReactor),
+                "reaction turn");
+        }
+
+        private void StopPendingAiPacingCoroutines()
+        {
+            if (pendingAiActiveTurnCoroutine != null)
+            {
+                StopCoroutine(pendingAiActiveTurnCoroutine);
+                pendingAiActiveTurnCoroutine = null;
+            }
+
+            if (pendingAiReactionTurnCoroutine != null)
+            {
+                StopCoroutine(pendingAiReactionTurnCoroutine);
+                pendingAiReactionTurnCoroutine = null;
+            }
+
+            isWaitingForAiActiveTurn = false;
+            isWaitingForAiReactionTurn = false;
         }
 
         private void LogAiDelegationFailure(TacticalResult result, string context)
