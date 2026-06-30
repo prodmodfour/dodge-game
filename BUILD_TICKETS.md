@@ -2541,7 +2541,7 @@ unity-ctrl --project "$PWD" test --filter AoeTargetValidationTests
 
 ## 086 — Implement AoE resolution after reactions
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: resolve aoe attacks against final positions`
 

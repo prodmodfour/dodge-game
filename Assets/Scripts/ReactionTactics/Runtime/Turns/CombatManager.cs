@@ -3,6 +3,7 @@ using ReactionTactics.Actions;
 using ReactionTactics.Core;
 using ReactionTactics.Grid;
 using ReactionTactics.Input;
+using ReactionTactics.Targeting;
 using ReactionTactics.Units;
 using UnityEngine;
 
@@ -459,7 +460,7 @@ namespace ReactionTactics.Turns
 
             var target = targetResult.Value;
             var previousAP = request.Unit.CurrentAP;
-            var declaredAffectedCells = CreateDeclaredAffectedCells(request.Unit, ability, target);
+            var declaredAffectedCells = CreateDeclaredAffectedCells(request.Unit, ability, target, mapResult.Value);
             var intentResult = actionDeclarationService.DeclareAction(
                 request.Unit,
                 ability,
@@ -478,7 +479,7 @@ namespace ReactionTactics.Turns
             PublishActionDeclarationEvents(intent, previousAP);
             LogActionDeclared(intent, previousAP);
 
-            var resolver = new ActionResolver(eventBus, this, logActionFlow);
+            var resolver = new ActionResolver(eventBus, this, logActionFlow, () => unitRegistry.GetLivingUnits());
             var resolveResult = resolver.Resolve(intent);
             if (resolveResult.IsFailure)
             {
@@ -737,7 +738,8 @@ namespace ReactionTactics.Turns
         private static GridPosition[] CreateDeclaredAffectedCells(
             TacticalUnit actor,
             AbilityDefinition ability,
-            ActionTarget target)
+            ActionTarget target,
+            IGridMap map)
         {
             switch (ability.Shape)
             {
@@ -746,9 +748,32 @@ namespace ReactionTactics.Turns
                 case AbilityShape.SingleTarget:
                 case AbilityShape.Melee:
                     return target.HasTargetCell ? new[] { target.TargetCell } : new GridPosition[0];
+                case AbilityShape.Radius:
+                    if (!target.HasTargetCell || map == null)
+                    {
+                        return new GridPosition[0];
+                    }
+
+                    return ToArray(AreaShapeService.GetRadiusCells(target.TargetCell, ability.Radius, map));
                 default:
                     return new GridPosition[0];
             }
+        }
+
+        private static GridPosition[] ToArray(IReadOnlyList<GridPosition> cells)
+        {
+            if (cells == null || cells.Count == 0)
+            {
+                return new GridPosition[0];
+            }
+
+            var result = new GridPosition[cells.Count];
+            for (var i = 0; i < cells.Count; i += 1)
+            {
+                result[i] = cells[i];
+            }
+
+            return result;
         }
 
         private static string DescribeUnit(TacticalUnit unit)
