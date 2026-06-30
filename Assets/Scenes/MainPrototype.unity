@@ -736,6 +736,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1047836511}
+  - component: {fileID: 1047836512}
   m_Layer: 0
   m_Name: UI
   m_TagString: Untagged
@@ -758,6 +759,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1047836512
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047836510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e68349ec2d01c9a7bdf09ffa299e863, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ReactionTactics.Runtime::ReactionTactics.UI.HoverGridDebugOverlay
+  gridPicker: {fileID: 0}
+  gridManager: {fileID: 1092979091}
+  unitRegistry: {fileID: 1494555728}
+  sourceCamera: {fileID: 737579229}
+  fallbackRaycastLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  fallbackMaxRaycastDistance: 500
+  fallbackRaycastWhenPickerMissing: 1
+  compactWhenNoCellHovered: 1
+  panelRect:
+    serializedVersion: 2
+    x: 12
+    y: 12
+    width: 340
+    height: 154
+  panelTitle: Hover Debug
 --- !u!1 &1092979089
 GameObject:
   m_ObjectHideFlags: 0

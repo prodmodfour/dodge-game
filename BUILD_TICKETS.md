@@ -1691,7 +1691,7 @@ unity-ctrl --project "$PWD" console --type error --stacktrace full --lines 50
 
 ## 057 — Add hover debug overlay
 
-Status: TODO
+Status: DONE
 
 **Commit:** `feat: show hover grid debug info`
 
