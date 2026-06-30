@@ -84,6 +84,61 @@ namespace ReactionTactics.Tests.EditMode
             }
         }
 
+        [Test]
+        public void RegenerateUsesAssignedTerrainMaterialsWhenProvided()
+        {
+            var definition = CreateDefinition();
+            var managerObject = new GameObject("Grid Manager Authored Material Test");
+            var gridRoot = new GameObject("Grid Root Authored Material Test");
+            var walkableMaterial = CreateMaterial("Assigned Walkable Grid Material");
+            var blockedMaterial = CreateMaterial("Assigned Blocked Grid Material");
+            var highlightMaterial = CreateMaterial("Assigned Highlight Grid Material");
+            var dangerMaterial = CreateMaterial("Assigned Danger Grid Material");
+            var safeMaterial = CreateMaterial("Assigned Safe Grid Material");
+
+            try
+            {
+                var manager = managerObject.AddComponent<GridManager>();
+                AssignObject(manager, "mapDefinition", definition);
+                Assert.That(manager.RebuildMap(), Is.True);
+
+                var terrainView = gridRoot.AddComponent<GridTerrainView>();
+                AssignObject(terrainView, "gridManager", manager);
+                AssignObject(terrainView, "walkableMaterial", walkableMaterial);
+                AssignObject(terrainView, "blockedMaterial", blockedMaterial);
+                AssignObject(terrainView, "highlightMaterial", highlightMaterial);
+                AssignObject(terrainView, "dangerMaterial", dangerMaterial);
+                AssignObject(terrainView, "safeMaterial", safeMaterial);
+
+                Assert.That(terrainView.Regenerate(), Is.True);
+
+                Assert.That(terrainView.WalkableMaterial, Is.SameAs(walkableMaterial));
+                Assert.That(terrainView.BlockedMaterial, Is.SameAs(blockedMaterial));
+                Assert.That(terrainView.HighlightMaterial, Is.SameAs(highlightMaterial));
+                Assert.That(terrainView.DangerMaterial, Is.SameAs(dangerMaterial));
+                Assert.That(terrainView.SafeMaterial, Is.SameAs(safeMaterial));
+                Assert.That(terrainView.TryGetTile(new GridPosition(0, 0, 0), out var walkableTile), Is.True);
+                Assert.That(terrainView.TryGetTile(new GridPosition(0, 1, 1), out var blockedTile), Is.True);
+                Assert.That(walkableTile.BaseMaterial, Is.SameAs(walkableMaterial));
+                Assert.That(walkableTile.HighlightMaterial, Is.SameAs(highlightMaterial));
+                Assert.That(walkableTile.TargetRenderer.sharedMaterial, Is.SameAs(walkableMaterial));
+                Assert.That(blockedTile.BaseMaterial, Is.SameAs(blockedMaterial));
+                Assert.That(blockedTile.HighlightMaterial, Is.SameAs(highlightMaterial));
+                Assert.That(blockedTile.TargetRenderer.sharedMaterial, Is.SameAs(blockedMaterial));
+            }
+            finally
+            {
+                Destroy(gridRoot);
+                Destroy(managerObject);
+                Destroy(definition);
+                Destroy(walkableMaterial);
+                Destroy(blockedMaterial);
+                Destroy(highlightMaterial);
+                Destroy(dangerMaterial);
+                Destroy(safeMaterial);
+            }
+        }
+
         private static GridMapDefinition CreateDefinition()
         {
             var definition = ScriptableObject.CreateInstance<GridMapDefinition>();
@@ -116,6 +171,20 @@ namespace ReactionTactics.Tests.EditMode
             var serializedObject = new SerializedObject(target);
             serializedObject.FindProperty(propertyName).objectReferenceValue = value;
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static Material CreateMaterial(string name)
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Lit")
+                ?? Shader.Find("Standard")
+                ?? Shader.Find("Sprites/Default")
+                ?? Shader.Find("UI/Default");
+            Assert.That(shader, Is.Not.Null, "At least one built-in shader must be available for material tests.");
+
+            return new Material(shader)
+            {
+                name = name
+            };
         }
 
         private static void AssertVector3(Vector3 actual, Vector3 expected)

@@ -795,7 +795,7 @@ unity-ctrl --project "$PWD" editor stop
 
 ## 026 — Add prototype terrain materials
 
-Status: TODO
+Status: DONE
 
 **Commit:** `art: add prototype grid materials`
 

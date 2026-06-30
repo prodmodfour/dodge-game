@@ -28,11 +28,31 @@ namespace ReactionTactics.Grid
         private bool clearExistingTiles = true;
 
         [SerializeField]
-        [Tooltip("Fallback color used for generated walkable tile materials until authored materials are added.")]
+        [Tooltip("Authored material for walkable terrain cells. A generated fallback color is used when this is empty.")]
+        private Material walkableMaterial;
+
+        [SerializeField]
+        [Tooltip("Authored material for blocked or unwalkable terrain cells. A generated fallback color is used when this is empty.")]
+        private Material blockedMaterial;
+
+        [SerializeField]
+        [Tooltip("Default material applied to tile views while they are highlighted for movement, targeting, or debug feedback.")]
+        private Material highlightMaterial;
+
+        [SerializeField]
+        [Tooltip("Prototype material reserved for threatened or dangerous grid cells.")]
+        private Material dangerMaterial;
+
+        [SerializeField]
+        [Tooltip("Prototype material reserved for safe reaction movement cells.")]
+        private Material safeMaterial;
+
+        [SerializeField]
+        [Tooltip("Fallback color used for generated walkable tile materials when no authored walkable material is assigned.")]
         private Color walkableColor = new Color(0.38f, 0.62f, 0.36f, 1f);
 
         [SerializeField]
-        [Tooltip("Fallback color used for generated blocked or unwalkable tile materials until authored materials are added.")]
+        [Tooltip("Fallback color used for generated blocked or unwalkable tile materials when no authored blocked material is assigned.")]
         private Color blockedColor = new Color(0.33f, 0.28f, 0.25f, 1f);
 
         private readonly List<GridTileView> generatedTiles = new List<GridTileView>();
@@ -52,6 +72,31 @@ namespace ReactionTactics.Grid
         public IReadOnlyList<GridTileView> GeneratedTiles
         {
             get { return generatedTiles; }
+        }
+
+        public Material WalkableMaterial
+        {
+            get { return walkableMaterial; }
+        }
+
+        public Material BlockedMaterial
+        {
+            get { return blockedMaterial; }
+        }
+
+        public Material HighlightMaterial
+        {
+            get { return highlightMaterial; }
+        }
+
+        public Material DangerMaterial
+        {
+            get { return dangerMaterial; }
+        }
+
+        public Material SafeMaterial
+        {
+            get { return safeMaterial; }
         }
 
         public int TileCount
@@ -183,12 +228,18 @@ namespace ReactionTactics.Grid
 
             var tileView = tileObject.AddComponent<GridTileView>();
             tileView.Initialize(cell, metrics, GetMaterialForCell(cell));
+            tileView.SetHighlightMaterial(highlightMaterial);
             return tileView;
         }
 
         private Material GetMaterialForCell(GridCell cell)
         {
-            return IsBlockedOrUnwalkable(cell) ? GetOrCreateBlockedMaterial() : GetOrCreateWalkableMaterial();
+            if (IsBlockedOrUnwalkable(cell))
+            {
+                return blockedMaterial != null ? blockedMaterial : GetOrCreateBlockedMaterial();
+            }
+
+            return walkableMaterial != null ? walkableMaterial : GetOrCreateWalkableMaterial();
         }
 
         private static bool IsBlockedOrUnwalkable(GridCell cell)
